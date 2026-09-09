@@ -1,5 +1,7 @@
 # pets.nvim
 
+https://www.youtube.com/watch?v=gz2pBhOZ2AY
+
 Desktop pets for Neovim that work in **every** terminal.
 
 ```
