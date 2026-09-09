@@ -1,0 +1,317 @@
+*pets.txt*   Desktop pets that render in any terminal
+
+==============================================================================
+CONTENTS                                                        *pets-contents*
+
+  1. Introduction .......................... |pets-introduction|
+  2. Requirements .......................... |pets-requirements|
+  3. Setup ................................. |pets-setup|
+  4. Commands .............................. |pets-commands|
+  5. Configuration ......................... |pets-configuration|
+  6. Actions ............................... |pets-actions|
+  7. Moods ................................. |pets-moods|
+  8. Highlights ............................ |pets-highlights|
+  9. Statusline ............................ |pets-statusline|
+ 10. API ................................... |pets-api|
+ 11. Backends .............................. |pets-backends|
+ 12. Health ................................ |pets-health|
+
+==============================================================================
+1. INTRODUCTION                                             *pets-introduction*
+
+pets.nvim puts small animals on a three-row strip above the status line. They
+walk, turn around when they meet, sleep when you stop typing, and react to what
+happens in the editor.
+
+Two renderers share one strip. On a terminal that speaks the kitty graphics
+protocol the pets are real PNG sprites; everywhere else they are ASCII drawn
+with |extmarks|. Nothing is required beyond Neovim itself, and a herd may mix
+the two: a species with no art is drawn as the closest ASCII shape.
+
+See |pets-backends| for the PNG sprite pack.
+
+==============================================================================
+2. REQUIREMENTS                                             *pets-requirements*
+
+Neovim 0.10 or newer. No other plugins.
+
+PNG pets additionally need a terminal implementing the kitty graphics protocol
+and the sprite pack; see |pets-backends|.
+
+==============================================================================
+3. SETUP                                                           *pets-setup*
+
+>lua
+    require('pets').setup({})
+<
+With lazy.nvim: >lua
+    { 'u3ih/pets.nvim', cmd = 'Pets', opts = {} }
+<
+==============================================================================
+4. COMMANDS                                                     *pets-commands*
+
+                                                                       *:Pets*
+:Pets add [{species}] [{name}]
+    Adopt a pet. Both arguments are optional: the species defaults to the
+    `species` option and the name is generated when omitted.
+
+:Pets pick
+    Choose a species from |vim.ui.select|, then name it.
+
+:Pets release [{name}]
+    Release a pet back into the wild: it waves goodbye and wanders off. With no
+    name, pick from a list. `:Pets remove` still works as an alias.
+
+:Pets clear
+    Release the whole herd.
+
+:Pets list
+    Report each pet's name, species and state.
+
+:Pets pause
+    Freeze or resume the animation clock.
+
+:Pets hide
+    Hide or show the strip without removing the pets.
+
+:Pets sleep
+    Put the herd to sleep, or wake it.
+
+:Pets act {action} [{name}]
+    Make the herd, or one named pet, do something. {action} is walk, run, sit,
+    play, sleep or idle. See |pets-actions|.
+
+:Pets sprites [install|remove|status]
+    Manage the PNG sprite pack. See |pets-backends|.
+
+ASCII species: cat, crab, dog, duck, ghost, slime, snake.
+PNG species (with the pack installed): clippy, cockatiel, crab, dog, mod,
+rocky, rubber-duck, slime, snake, zappy — each with several colour styles.
+
+==============================================================================
+5. CONFIGURATION                                           *pets-configuration*
+
+>lua
+    require('pets').setup({
+      backend = 'auto',
+      graphics = {
+        cols = 8,
+        rows = 3,
+        style = 'random',
+        frame_ticks = 2,
+      },
+      species = 'random',
+      max_pets = 8,
+      tick_ms = 120,
+      speed = 0.45,
+      canvas = {
+        width = 0.4,
+        anchor = 'SE',
+        row_offset = 0,
+        zindex = 20,
+        blend = 0,
+      },
+      moods = {
+        enabled = true,
+        sleep_when_idle = true,
+        follow_diagnostics = true,
+        ttl = 30,
+      },
+      persist = true,
+      autostart = 0,
+      pause_unfocused = true,
+      farewell_animation = true,
+    })
+<
+backend
+    "auto" draws PNG sprites when the terminal supports them and ASCII
+    otherwise. "kitty" and "text" force one renderer; "kitty" is useful when
+    the detection cannot see through a terminal multiplexer.
+
+graphics.cols, graphics.rows
+    Size of a PNG sprite in terminal cells. The strip is three rows tall, so
+    rows is clamped to 3.
+
+graphics.style
+    Preferred colour variant. Falls back to a random style when the chosen
+    species does not have it.
+
+canvas.width
+    A fraction of 'columns' when <= 1, otherwise an absolute cell count.
+
+canvas.anchor
+    "SE" pins the strip to the bottom right, "SW" to the bottom left. The strip
+    always sits directly above 'cmdheight' and the status line.
+
+persist
+    Saves the herd to `stdpath('state')/pets.json` on |VimLeavePre| and
+    restores it on the next `setup()`.
+
+autostart
+    Pets spawned by `setup()` when nothing was restored. Left at 0, adopting a
+    pet is always an explicit act.
+
+Invalid values are repaired with a warning rather than raising; a typo in your
+config never stops Neovim from starting.
+
+==============================================================================
+6. ACTIONS                                                       *pets-actions*
+
+Pets choose their own behaviour, weighted so walking dominates:
+
+    walk    the default
+    run     a dash at 2.4x speed, with a dust puff behind
+    pace    back and forth on the spot, @.@ eyes — an agent is working
+    sit     a long settled pause
+    play    a show-off pose with (*.*) eyes
+    sleep   after |CursorHold|
+
+With the PNG pack these use the packs' own walk/run/sit/swipe/liedown
+animations. Trigger one yourself with `:Pets act` or |pets.act()|.
+
+                                                              *pets-triggers*
+Two hooks make the herd react to the rest of your editor.
+
+`agents` reacts to AI coding agents. An agent is any terminal buffer whose
+command matches one of `agents.patterns`; the buffer's cwd is deliberately
+ignored, so a shell started in a directory named after an agent is not mistaken
+for one. Activity comes from the terminal's own output, so no agent needs to
+know this plugin exists.
+
+    open    the agent's terminal appeared    -> run,  (*.*)
+    busy    it is producing output           -> pace, @.@
+    done    quiet for `busy_ms`, your turn   -> play, ^.^
+    close   the terminal went away           -> sit
+>lua
+    agents = {
+      enabled = true,
+      patterns = { 'claude', 'aider', 'opencode', 'codex' },
+      busy_ms = 1200,
+      react = {
+        open = { action = 'run', mood = 'love' },
+        busy = { action = 'pace', mood = 'focus' },
+        done = { action = 'play', mood = 'happy' },
+        close = { action = 'sit' },
+      },
+    }
+<
+The layer is additive: with no agent on screen the pets animate for ordinary
+editing exactly as they otherwise would.
+
+`moods.triggers` turns any autocmd into a reaction: >lua
+    moods = {
+      triggers = {
+        { event = 'User', pattern = 'NeotestPassed', action = 'play', mood = 'love' },
+        { event = 'User', pattern = 'BuildFailed', action = 'run', mood = 'alert' },
+        { event = 'BufEnter', pattern = '*.log', action = 'sit' },
+      },
+    }
+<
+`action` is any state, `mood` any face, `ttl` the duration in ticks. All three
+are optional.
+
+==============================================================================
+7. MOODS                                                           *pets-moods*
+
+    o.o     idle
+    @.@     watching an agent work
+    ^.^     a buffer was written
+    u.u     the current buffer has warnings
+    O.O     the current buffer has errors
+    -.-     asleep, after |CursorHold|
+    o.~     waving goodbye on the way out
+
+A transient mood (a save) outranks the ambient one (diagnostics) for
+`moods.ttl` ticks. Any cursor movement or |InsertEnter| wakes a sleeping herd
+and restores the full-speed clock.
+
+==============================================================================
+8. HIGHLIGHTS                                                 *pets-highlights*
+
+All groups are defined with `default = true` and linked, so a colorscheme or
+your own config can override any of them.
+
+    PetsBody        Comment             the sprite
+    PetsNeutral     Comment             idle eyes
+    PetsHappy       DiagnosticOk
+    PetsSad         DiagnosticWarn
+    PetsAlert       DiagnosticError
+    PetsSleep       Comment
+    PetsLove        DiagnosticHint
+    PetsFocus       DiagnosticInfo
+    PetsFarewell    DiagnosticHint
+
+==============================================================================
+9. STATUSLINE                                                 *pets-statusline*
+
+`require('pets').statusline()` returns "(^.^) Mochi" for one pet, "(o.o) x3"
+for several, and "" when the strip is hidden or empty. >lua
+    sections = { lualine_x = { require('pets').statusline } }
+<
+==============================================================================
+10. API                                                              *pets-api*
+
+pets.setup({opts})                                             *pets.setup()*
+pets.add({opts})                                                 *pets.add()*
+    {opts} accepts `name`, `species`, `style`, `x`, `dir`, `quiet`. Returns the
+    pet, or nil when the herd is full or the name is taken.
+
+pets.species()                                               *pets.species()*
+    Species available right now: the PNG pack when it is installed and usable,
+    the ASCII cast otherwise.
+
+pets.release({name}, {opts})                                *pets.release()*
+    Releases the pet back into the wild. {opts.animate} defaults to the
+    `farewell_animation` option. `pets.remove()` remains as an alias.
+
+pets.clear({opts})                                             *pets.clear()*
+pets.list()                                                     *pets.list()*
+pets.pick()                                                     *pets.pick()*
+pets.pause({value})                                            *pets.pause()*
+pets.hide({value})                                              *pets.hide()*
+pets.sleep({value})                                            *pets.sleep()*
+pets.act({action}, {opts})                                       *pets.act()*
+    {opts} accepts `name` (one pet only), `ttl` and `mood`. Returns how many
+    pets reacted.
+pets.statusline()                                         *pets.statusline()*
+
+Each of pause, hide and sleep toggles when {value} is omitted.
+
+==============================================================================
+11. BACKENDS                                                    *pets-backends*
+
+TEXT
+    ASCII sprites written into the strip's buffer and coloured with extmarks.
+    Works in every terminal, including tmux and ssh. No setup.
+
+KITTY GRAPHICS                                                   *pets-sprites*
+    PNG sprites drawn straight onto the terminal with the kitty graphics
+    protocol. Needs three things:
+
+    1. A terminal that implements the protocol: kitty, ghostty, WezTerm or
+       Konsole. Detection reads $KITTY_WINDOW_ID, $GHOSTTY_RESOURCES_DIR,
+       $WEZTERM_PANE, $KONSOLE_VERSION, $TERM_PROGRAM and $TERM; force it with
+       `backend = 'kitty'` when that is not enough.
+    2. The sprite pack: `:Pets sprites`. It shallow-clones
+       giusgad/pets.nvim into `stdpath('data')/pets.nvim/media` and keeps only
+       the media folder. `git` is required.
+    3. Inside tmux, passthrough: >tmux
+        set -g allow-passthrough on
+<
+    The art is not shipped with this plugin. It belongs to the creators
+    credited by giusgad/pets.nvim, whose licence excludes the media folder from
+    its MIT terms.
+
+    Each PNG is transmitted to the terminal once — inline and base64-chunked,
+    so it works over ssh — and afterwards only referenced by id. A frame is one
+    write: delete the previous placements, then place each pet at its cell.
+
+==============================================================================
+12. HEALTH                                                        *pets-health*
+
+`:checkhealth pets` verifies the Neovim version, reports the active backend,
+the sprite pack, tmux passthrough, the resolved strip geometry and the clock
+settings, and warns when the window is too short for the three-row strip or the
+state directory is not writable.
+
+vim:tw=78:ts=8:ft=help:norl:
