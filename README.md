@@ -122,7 +122,8 @@ require('pets').setup({
   },
   moods = {
     enabled = true,
-    sleep_when_idle = true,     -- doze off on CursorHold
+    sleep_when_idle = true,     -- doze off once the editor goes quiet
+    sleep_after_ms = 60000,     -- how long "quiet" has to last
     follow_diagnostics = true,  -- frown while the buffer has errors
     ttl = 30,                   -- ticks a one-shot mood lasts
   },
@@ -144,7 +145,7 @@ Pets pick their own behaviour, weighted so they mostly walk:
 | pace | walks back and forth on the spot, `@.@` | an agent is working |
 | sit | `(___)` | random long pause |
 | play | `>'^'<` and `*.*` eyes | you saved a file, or at random |
-| sleep | `-.-` and a `z` bubble | `CursorHold` |
+| sleep | `-.-` and a `z` bubble | `sleep_after_ms` of an untouched editor |
 
 With the PNG pack these map onto the sprite packs' own `walk`, `run`, `sit`,
 `swipe` and `liedown` animations (the dog pack substitutes `pee` for `swipe`,
@@ -218,7 +219,7 @@ moods = {
 | `O.O` | the buffer has errors |
 | `*.*` | showing off — a save, or an agent terminal opening |
 | `@.@` | watching an agent work |
-| `-.-` | you stopped typing (`CursorHold`) |
+| `-.-` | you stopped typing for `sleep_after_ms` |
 | `o.~` | waving goodbye on the way out |
 
 The eyes are highlighted with `PetsHappy`, `PetsSad`, `PetsAlert`, `PetsFarewell` and friends,

@@ -114,6 +114,7 @@ rocky, rubber-duck, slime, snake, zappy — each with several colour styles.
       moods = {
         enabled = true,
         sleep_when_idle = true,
+        sleep_after_ms = 60000,
         follow_diagnostics = true,
         ttl = 30,
       },
@@ -164,7 +165,7 @@ Pets choose their own behaviour, weighted so walking dominates:
     pace    back and forth on the spot, @.@ eyes — an agent is working
     sit     a long settled pause
     play    a show-off pose with (*.*) eyes
-    sleep   after |CursorHold|
+    sleep   after `sleep_after_ms` of an untouched editor
 
 With the PNG pack these use the packs' own walk/run/sit/swipe/liedown
 animations. Trigger one yourself with `:Pets act` or |pets.act()|.
@@ -218,7 +219,7 @@ are optional.
     ^.^     a buffer was written
     u.u     the current buffer has warnings
     O.O     the current buffer has errors
-    -.-     asleep, after |CursorHold|
+    -.-     asleep, after `sleep_after_ms` of stillness
     o.~     waving goodbye on the way out
 
 A transient mood (a save) outranks the ambient one (diagnostics) for

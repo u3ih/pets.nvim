@@ -112,6 +112,7 @@ local function tick()
   if cfg.agents.enabled then
     agents.poll()
   end
+  events.doze()
   local ctx = { width = canvas.width(), step = cfg.speed, ambient = events.ambient }
 
   local alive = {}

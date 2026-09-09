@@ -4,9 +4,25 @@
 --- successful write, frowns while the buffer has LSP errors and falls asleep
 --- when you stop typing.
 
+local uv = vim.uv or vim.loop
+
 local M = {}
 
 local group = nil
+
+--- Loop time of the last thing the user did. The herd naps relative to this
+--- rather than to `CursorHold`.
+M.last_active = uv.now()
+
+--- Mark the editor as in use.
+function M.touch()
+  M.last_active = uv.now()
+end
+
+--- @return integer ms since the last sign of life
+function M.idle_ms()
+  return uv.now() - M.last_active
+end
 
 --- Ambient mood, recomputed from diagnostics. Individual pets fall back to it
 --- when they have no transient mood of their own.
@@ -38,6 +54,7 @@ local function broadcast_mood(mood, ttl)
 end
 
 local function wake_all()
+  M.touch()
   local pets = require('pets')
   local woke = false
   for _, pet in ipairs(pets.list()) do
@@ -54,6 +71,7 @@ local function wake_all()
 end
 
 function M.setup()
+  M.touch()
   local cfg = require('pets.config').options
   local canvas = require('pets.canvas')
   local scheduler = require('pets.scheduler')
@@ -123,23 +141,17 @@ function M.setup()
     end
 
     if cfg.moods.sleep_when_idle then
-      -- CursorHold fires after 'updatetime' of stillness; that is exactly the
-      -- "user walked away" signal we want, and it costs no polling.
-      vim.api.nvim_create_autocmd('CursorHold', {
-        group = group,
-        callback = function()
-          local pets = require('pets').list()
-          for _, pet in ipairs(pets) do
-            if pet.state ~= 'leaving' then
-              pet:set_state('sleep')
-            end
-          end
-          -- Sleeping pets only breathe; drop to the clock's cheapest state by
-          -- letting the tick loop keep running for the `z` bubble but nothing
-          -- else moves.
-        end,
-      })
-      vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+      -- Anything the user does counts as a sign of life. `M.doze` reads the
+      -- resulting timestamp once per tick; CursorHold is deliberately not used,
+      -- since it fires after 'updatetime' and that is commonly 100ms.
+      vim.api.nvim_create_autocmd({
+        'CursorMoved',
+        'CursorMovedI',
+        'TextChanged',
+        'TextChangedI',
+        'WinScrolled',
+        'ModeChanged',
+      }, {
         group = group,
         callback = wake_all,
       })
@@ -196,6 +208,23 @@ function M.setup()
   })
 
   refresh_ambient()
+end
+
+--- Put the herd down once the editor has been still long enough. Called from
+--- the tick, so the threshold is ours rather than 'updatetime'.
+function M.doze()
+  local cfg = require('pets.config').options
+  if not (cfg.moods.enabled and cfg.moods.sleep_when_idle) then
+    return
+  end
+  if M.idle_ms() < cfg.moods.sleep_after_ms then
+    return
+  end
+  for _, pet in ipairs(require('pets').list()) do
+    if pet.state ~= 'leaving' and pet.state ~= 'sleep' then
+      pet:set_state('sleep')
+    end
+  end
 end
 
 function M.teardown()

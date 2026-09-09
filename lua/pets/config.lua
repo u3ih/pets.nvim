@@ -44,8 +44,12 @@ M.defaults = {
   --- break the build and they sulk, stop typing and they doze off.
   moods = {
     enabled = true,
-    --- Sleep after `updatetime` ms of no cursor movement (CursorHold).
+    --- Doze off after `sleep_after_ms` of an untouched editor.
     sleep_when_idle = true,
+    --- How long the editor has to sit still first. Deliberately not tied to
+    --- 'updatetime': that is routinely dropped to 100ms for LSP and gitsigns,
+    --- and pets that nap after a tenth of a second never animate at all.
+    sleep_after_ms = 60000,
     --- Frown while the current buffer has LSP errors.
     follow_diagnostics = true,
     --- Ticks a one-shot mood (a save, an insert) stays on screen.
@@ -119,6 +123,9 @@ function M.setup(opts)
   gfx.cols = math.max(2, math.floor(tonumber(gfx.cols) or M.defaults.graphics.cols))
   gfx.rows = math.max(1, math.min(3, math.floor(tonumber(gfx.rows) or M.defaults.graphics.rows)))
   gfx.frame_ticks = math.max(1, math.floor(tonumber(gfx.frame_ticks) or M.defaults.graphics.frame_ticks))
+
+  local moods = merged.moods
+  moods.sleep_after_ms = math.max(1000, math.floor(tonumber(moods.sleep_after_ms) or M.defaults.moods.sleep_after_ms))
 
   merged.tick_ms = math.max(30, math.floor(tonumber(merged.tick_ms) or M.defaults.tick_ms))
   merged.max_pets = math.max(1, math.floor(tonumber(merged.max_pets) or M.defaults.max_pets))
