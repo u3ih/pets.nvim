@@ -200,9 +200,11 @@ function M.setup()
     group = group,
     callback = function()
       require('pets.session').save(require('pets').list())
-      -- close_win() clears any images it actually drew; nothing is written to
-      -- a terminal that never got a placement.
       require('pets.canvas').close_win()
+      -- close_win() only clears what it believes it drew. Send the wipe again
+      -- unconditionally, and synchronously: the shell the user comes back to
+      -- must not have sprites left on it.
+      require('pets.graphics').shutdown()
       scheduler.stop()
     end,
   })

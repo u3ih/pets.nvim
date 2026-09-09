@@ -172,7 +172,11 @@ animations. Trigger one yourself with `:Pets act` or |pets.act()|.
 
 PNG sprites are drawn by the terminal, above every Neovim window, so they step
 aside while a picker, prompt or completion menu is open and come back when it
-closes. `:Pets clear` always removes them immediately.
+closes. `:Pets clear` always removes them immediately, and quitting Neovim
+wipes them from the terminal before the shell comes back.
+
+The herd is remembered across sessions — species, colour and position go to
+`stdpath('state')` on exit. Set `persist = false` to start empty each launch.
 
                                                               *pets-triggers*
 Two hooks make the herd react to the rest of your editor.

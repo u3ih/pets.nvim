@@ -270,6 +270,28 @@ function M.clear()
   flush({ apc('a=d,d=a,q=2') }, true)
 end
 
+--- Wipe the screen on the way out of Neovim, and hand the terminal its image
+--- memory back.
+---
+--- Written to the descriptor rather than queued: `nvim_chan_send` needs the
+--- event loop to come round again, and on `VimLeavePre` it may not — which
+--- would leave the sprites painted over whatever the user drops back into.
+--- Blocking is the right trade here and nowhere else.
+function M.shutdown()
+  if next(ids) == nil then
+    -- Nothing was ever transmitted, so there is nothing on screen and no reason
+    -- to send a graphics escape to a terminal that may not speak the protocol.
+    return
+  end
+  broken = false
+  ids = {}
+  local data = wrap(apc('a=d,d=A,q=2'))
+  pcall(function()
+    io.stdout:write(data)
+    io.stdout:flush()
+  end)
+end
+
 --- Forget transmitted images too — used when the sprite pack changes.
 function M.reset()
   broken = false

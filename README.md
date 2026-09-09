@@ -157,7 +157,12 @@ Drive them yourself with `:Pets act run`, `:Pets act pace` or
 PNG sprites are painted by the terminal, above every Neovim window, so they
 step aside on their own while a picker, prompt or completion menu is open and
 come back when it closes. `:Pets clear` always takes them off the screen
-immediately, whatever else is going on.
+immediately, whatever else is going on, and quitting Neovim wipes them from the
+terminal before you land back in the shell.
+
+The herd itself is remembered: species, colour and position are written to
+`stdpath('state')` on exit and restored on the next launch. Set
+`persist = false` to start empty every time instead.
 
 ## Reacting to your editor
 
