@@ -39,7 +39,22 @@ function M.check()
     if vim.env.TMUX and not graphics.tmux_ready() then
       health.error('tmux swallows the image escapes: add `set -g allow-passthrough on` to tmux.conf')
     elseif vim.env.TMUX then
-      health.ok('tmux allow-passthrough is on')
+      if graphics.passthrough_all() then
+        health.ok('tmux allow-passthrough is `all`')
+      else
+        health.warn(
+          'tmux allow-passthrough is `on`: switching tmux window or session leaves the last sprites '
+            .. 'burned on the terminal until you switch back. `set -g allow-passthrough all` fixes it'
+        )
+      end
+      if graphics.tmux_option('focus-events') == 'on' then
+        health.ok('tmux focus-events are on')
+      else
+        health.warn(
+          'tmux focus-events are off, so the pets cannot tell when the pane goes away: '
+            .. 'add `set -g focus-events on` to tmux.conf'
+        )
+      end
     end
   else
     health.info('text backend: this terminal does not advertise the kitty graphics protocol')

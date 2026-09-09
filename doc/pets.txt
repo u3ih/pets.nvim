@@ -176,7 +176,10 @@ closes. `:Pets clear` always removes them immediately, and quitting Neovim
 wipes them from the terminal before the shell comes back.
 
 The herd is remembered across sessions — species, colour and position go to
-`stdpath('state')` on exit. Set `persist = false` to start empty each launch.
+`stdpath('state')` on exit. Restoring happens in `setup()`, so a plugin spec
+lazy-loaded on `:Pets` alone will not bring the herd back until the next `:Pets`
+command; load on `VeryLazy` to have them waiting. Set `persist = false` to start
+empty each launch.
 
                                                               *pets-triggers*
 Two hooks make the herd react to the rest of your editor.
@@ -304,9 +307,15 @@ KITTY GRAPHICS                                                   *pets-sprites*
     2. The sprite pack: `:Pets sprites`. It shallow-clones
        giusgad/pets.nvim into `stdpath('data')/pets.nvim/media` and keeps only
        the media folder. `git` is required.
-    3. Inside tmux, passthrough: >tmux
-        set -g allow-passthrough on
+    3. Inside tmux, passthrough and focus events: >tmux
+        set -g allow-passthrough all
+        set -g focus-events on
 <
+    `all` rather than `on`: `on` stops forwarding as soon as the pane goes off
+    screen, so switching tmux window or session leaves the last frame of
+    sprites burned on the terminal until you switch back. Focus events are how
+    the pets learn they are no longer on screen. |:checkhealth| reports both.
+
     The art is not shipped with this plugin. It belongs to the creators
     credited by giusgad/pets.nvim, whose licence excludes the media folder from
     its MIT terms.

@@ -101,22 +101,30 @@ function M.setup()
     end,
   })
 
-  if cfg.pause_unfocused then
-    vim.api.nvim_create_autocmd('FocusLost', {
-      group = group,
-      callback = function()
+  -- Focus is handled whatever `pause_unfocused` says, because the sprites have
+  -- to come off the terminal either way: they are painted by the terminal, not
+  -- by Neovim, so a frame left behind stays visible over whatever the user
+  -- switched to — another tmux window, another app.
+  vim.api.nvim_create_autocmd('FocusLost', {
+    group = group,
+    callback = function()
+      canvas.suspend_images()
+      if cfg.pause_unfocused then
         scheduler.stop()
-      end,
-    })
-    vim.api.nvim_create_autocmd('FocusGained', {
-      group = group,
-      callback = function()
-        if #require('pets').list() > 0 then
-          scheduler.start()
-        end
-      end,
-    })
-  end
+      end
+    end,
+  })
+  vim.api.nvim_create_autocmd('FocusGained', {
+    group = group,
+    callback = function()
+      -- The pane may have moved while we were away: another window layout, a
+      -- different split. Its screen coordinates are where images get placed.
+      require('pets.graphics').forget_tmux_offset()
+      if #require('pets').list() > 0 then
+        scheduler.start()
+      end
+    end,
+  })
 
   if cfg.moods.enabled then
     vim.api.nvim_create_autocmd('BufWritePost', {

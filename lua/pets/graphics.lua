@@ -73,19 +73,44 @@ function M._detect()
   return string.find(vim.env.TERM or '', 'kitty', 1, true) ~= nil
 end
 
+--- Read a global tmux option, or nil when tmux cannot be asked.
+--- @param name string
+--- @return string|nil
+function M.tmux_option(name)
+  if not vim.env.TMUX then
+    return nil
+  end
+  local out = vim.fn.system({ 'tmux', 'show', '-gv', name })
+  if vim.v.shell_error ~= 0 then
+    return nil
+  end
+  return vim.trim(out)
+end
+
 --- tmux only forwards unknown escape sequences when `allow-passthrough` is on,
 --- and they have to be wrapped with every ESC doubled.
+---
+--- `on` forwards only while the pane is visible, `all` forwards always. Both
+--- work; the difference matters when the pane goes off screen, which is what
+--- `M.passthrough_all` is for.
 --- @return boolean
 function M.tmux_ready()
   if not vim.env.TMUX then
     return true
   end
-  local out = vim.fn.system({ 'tmux', 'show', '-gv', 'allow-passthrough' })
-  if vim.v.shell_error ~= 0 then
-    return false
-  end
-  out = vim.trim(out)
+  local out = M.tmux_option('allow-passthrough')
   return out == 'on' or out == 'all'
+end
+
+--- Does tmux forward our escapes even while the pane is off screen?
+---
+--- It matters on the way out. Switching tmux window or session makes the pane
+--- invisible, and under `on` the wipe we send at that moment is dropped —
+--- leaving the last frame of sprites burned over whatever the user switched to,
+--- until they come back. Under `all` the wipe lands.
+--- @return boolean
+function M.passthrough_all()
+  return M.tmux_option('allow-passthrough') == 'all'
 end
 
 --- Wrap one escape sequence for tmux passthrough.

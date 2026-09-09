@@ -43,15 +43,22 @@ protocol, plus the sprite pack (`:Pets sprites`, `git` required). Inside tmux,
 add to your `tmux.conf`:
 
 ```tmux
-set -g allow-passthrough on
+set -g allow-passthrough all
+set -g focus-events on
 ```
+
+`all` rather than `on`: with `on`, tmux stops forwarding the moment the pane
+goes off screen, so switching tmux window or session leaves the last frame of
+sprites burned on the terminal until you switch back. `focus-events` is how the
+pets find out they are no longer being looked at. `:checkhealth pets` reports
+on both.
 
 ## Install
 
 lazy.nvim:
 
 ```lua
-{ 'u3ih/pets.nvim', cmd = 'Pets', opts = {} }
+{ 'u3ih/pets.nvim', event = 'VeryLazy', opts = {} }
 ```
 
 Working on a local checkout instead:
@@ -163,8 +170,10 @@ immediately, whatever else is going on, and quitting Neovim wipes them from the
 terminal before you land back in the shell.
 
 The herd itself is remembered: species, colour and position are written to
-`stdpath('state')` on exit and restored on the next launch. Set
-`persist = false` to start empty every time instead.
+`stdpath('state')` on exit and restored on the next launch. Restoring happens in
+`setup()`, so a spec lazy-loaded on `cmd = 'Pets'` alone will not bring the herd
+back until you next run a `:Pets` command — use `event = 'VeryLazy'` if you want
+them waiting for you. Set `persist = false` to start empty every time instead.
 
 ## Reacting to your editor
 
