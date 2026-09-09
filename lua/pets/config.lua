@@ -24,8 +24,10 @@ M.defaults = {
     --- Ticks each PNG frame is held for; the packs animate at roughly 4fps.
     frame_ticks = 2,
   },
-  --- Species used by `:Pets add` with no argument. 'random' picks one per pet.
-  species = 'random',
+  --- Species used by `:Pets add` with no argument. 'random' picks one per pet;
+  --- a name picks that one every time. The dog is the only species every
+  --- backend has art for, so it is the safe default.
+  species = 'dog',
   --- Hard cap; every pet costs one sprite blit per tick.
   max_pets = 8,
   --- Animation clock. 120ms is ~8fps, enough for a two-frame walk cycle and

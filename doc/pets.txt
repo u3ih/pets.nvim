@@ -100,7 +100,7 @@ rocky, rubber-duck, slime, snake, zappy — each with several colour styles.
         style = 'random',
         frame_ticks = 2,
       },
-      species = 'random',
+      species = 'dog',
       max_pets = 8,
       tick_ms = 120,
       speed = 0.45,

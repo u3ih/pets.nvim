@@ -78,7 +78,7 @@ One command, with completion on both the subcommand and its argument:
 
 | Command | What it does |
 | :-- | :-- |
-| `:Pets add [species] [name]` | Adopt a pet. Both arguments are optional — a random species gets an auto-generated name. |
+| `:Pets add [species] [name]` | Adopt a pet. Both arguments are optional — you get the `species` default and an auto-generated name. |
 | `:Pets pick` | Choose a species from a menu, with a preview of each face. |
 | `:Pets release [name]` | Release a pet back into the wild; with no name you get a picker. |
 | `:Pets clear` | Release the whole herd. |
@@ -118,7 +118,7 @@ require('pets').setup({
     style = 'random',   -- colour variant, e.g. 'brown'
     frame_ticks = 2,    -- ticks each PNG frame is held
   },
-  species = 'random',   -- default species for `:Pets add`
+  species = 'dog',      -- default for `:Pets add`; 'random' picks per pet
   max_pets = 8,
   tick_ms = 120,        -- animation clock
   speed = 0.45,         -- cells per tick
