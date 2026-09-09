@@ -11,6 +11,8 @@
 ---
 --- Protocol reference: https://sw.kovidgoyal.net/kitty/graphics-protocol/
 
+local uv = vim.uv or vim.loop
+
 local M = {}
 
 local ESC = '\27'
@@ -84,10 +86,13 @@ function M.tmux_ready()
   return out == 'on' or out == 'all'
 end
 
---- Wrap a whole frame for tmux passthrough. Everything — cursor moves
---- included — goes inside one wrapper: tmux must not see the cursor jumping,
---- or its own idea of where the cursor is drifts out of sync with the
---- terminal's.
+--- Wrap one escape sequence for tmux passthrough.
+---
+--- One wrapper per sequence, never one around the whole frame: a frame carries
+--- kilobytes of base64 and is split across several writes on its way out, and a
+--- wrapper cut in half leaves tmux passing the remainder through as text. Every
+--- sequence still goes through passthrough, so tmux never sees the cursor jump
+--- either way.
 --- @param seq string
 --- @return string
 local function wrap(seq)
@@ -127,17 +132,39 @@ function M.forget_tmux_offset()
   tmux_offset_cache = nil
 end
 
---- One write per frame: the whole batch goes out in a single syscall so the
---- terminal never renders a half-updated strip.
+--- Push every byte of `data` to the terminal.
+---
+--- `io.stdout` is not usable here: C stdio breaks a long payload at its own
+--- buffer boundary, and a frame carrying a transmitted PNG is several buffers
+--- long. Writing the descriptor directly keeps each attempt whole, and the loop
+--- finishes a short write instead of dropping its tail.
+--- @param data string
+local function write_all(data)
+  local pos, len = 1, #data
+  while pos <= len do
+    local n = uv.fs_write(1, data:sub(pos), -1)
+    if not n or n <= 0 then
+      error('pets.nvim: short write to the terminal')
+    end
+    pos = pos + n
+  end
+end
+
+--- One write per frame, so the terminal never renders a half-updated strip.
 --- @param chunks string[]
 local function flush(chunks)
   if broken or #chunks == 0 then
     return
   end
-  local ok = pcall(function()
-    io.stdout:write(wrap(table.concat(chunks)))
-    io.stdout:flush()
-  end)
+  -- Drain the TUI first. These bytes reach the terminal without going through
+  -- Neovim's writer, so landing in the middle of a sequence Neovim had already
+  -- queued splits it, and everything after the cut is printed as literal text.
+  pcall(vim.api.nvim__redraw, { flush = true })
+  local wrapped = {}
+  for i = 1, #chunks do
+    wrapped[i] = wrap(chunks[i])
+  end
+  local ok = pcall(write_all, table.concat(wrapped))
   if not ok then
     broken = true
   end
