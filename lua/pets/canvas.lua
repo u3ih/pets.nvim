@@ -110,6 +110,29 @@ local function ensure_win()
   return M.win
 end
 
+--- Is something layered over the editor right now — a picker, a prompt, a
+--- completion menu?
+---
+--- Terminal images are painted above every Neovim window, so a frame drawn
+--- while one of these is open lands on top of what the user is actually
+--- reading. The pets keep moving; only their sprites sit the frame out.
+--- @return boolean
+function M.obscured()
+  if vim.fn.pumvisible() == 1 or vim.api.nvim_get_mode().blocking then
+    return true
+  end
+  local ok, cfg = pcall(vim.api.nvim_win_get_config, 0)
+  return ok and cfg.relative ~= ''
+end
+
+--- Take the sprites off the terminal without closing the strip.
+function M.suspend_images()
+  if M.drew_images then
+    M.drew_images = false
+    require('pets.graphics').clear()
+  end
+end
+
 --- Splice `s` into `row` at cell `x`, clipping whatever falls off either end.
 --- Byte indices are safe here because every sprite glyph is ASCII.
 --- @param row string exactly `width` characters
@@ -207,15 +230,14 @@ function M.render(pets, ambient)
     vim.api.nvim_buf_set_extmark(buf, ns, 1, face.col, { end_col = face.col + face.len, hl_group = face.hl })
   end
 
-  local graphics = require('pets.graphics')
-  if #images > 0 then
+  if #images > 0 and not M.obscured() then
     M.drew_images = true
-    graphics.draw(images)
-  elseif M.drew_images then
-    -- The last PNG pet just left; wipe its placement instead of leaving it
-    -- burned onto the terminal.
-    M.drew_images = false
-    graphics.clear()
+    require('pets.graphics').draw(images)
+  else
+    -- Either the last PNG pet just left or something is layered over the
+    -- editor. Wipe the placements instead of leaving them burned onto the
+    -- terminal.
+    M.suspend_images()
   end
 end
 

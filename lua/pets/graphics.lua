@@ -24,7 +24,9 @@ local ST = ESC .. '\\'
 local ids = {}
 local next_id = 1000
 
---- True once a write to stdout has failed; stops us spamming a dead terminal.
+--- True once a write to the terminal has failed; stops us spamming a dead one.
+--- Always cleared before a wipe, so getting the pets off the screen never
+--- depends on the last frame having worked.
 local broken = false
 
 --- @type boolean|nil memoised: nothing here changes while Neovim runs
@@ -132,42 +134,42 @@ function M.forget_tmux_offset()
   tmux_offset_cache = nil
 end
 
---- Push every byte of `data` to the terminal.
+--- Hand a frame to the terminal.
 ---
---- `io.stdout` is not usable here: C stdio breaks a long payload at its own
---- buffer boundary, and a frame carrying a transmitted PNG is several buffers
---- long. Writing the descriptor directly keeps each attempt whole, and the loop
---- finishes a short write instead of dropping its tail.
+--- Through `nvim_chan_send` when it can be: Neovim owns the terminal
+--- descriptors, so it queues the payload, copes with a pty that is momentarily
+--- full, and returns without blocking the editor. Writing a descriptor
+--- ourselves does none of that — Neovim keeps the terminal non-blocking, so a
+--- busy pty either stalls the whole loop or answers EAGAIN halfway through a
+--- sequence and leaves the frame truncated on screen.
 --- @param data string
-local function write_all(data)
-  local pos, len = 1, #data
-  while pos <= len do
-    local n = uv.fs_write(1, data:sub(pos), -1)
-    if not n or n <= 0 then
-      error('pets.nvim: short write to the terminal')
-    end
-    pos = pos + n
+--- @return boolean sent
+local function emit(data)
+  if uv.guess_handle(2) == 'tty' and pcall(vim.api.nvim_chan_send, vim.v.stderr, data) then
+    return true
   end
+  return pcall(function()
+    io.stdout:write(data)
+    io.stdout:flush()
+  end)
 end
 
 --- One write per frame, so the terminal never renders a half-updated strip.
---- @param chunks string[]
-local function flush(chunks)
-  if broken or #chunks == 0 then
+--- @param chunks string[] each entry is a whole escape sequence, or a group of
+--- them that has to reach the terminal without anything in between
+--- @param force boolean|nil write even though an earlier frame failed
+local function flush(chunks, force)
+  if #chunks == 0 or (broken and not force) then
     return
   end
-  -- Drain the TUI first. These bytes reach the terminal without going through
-  -- Neovim's writer, so landing in the middle of a sequence Neovim had already
-  -- queued splits it, and everything after the cut is printed as literal text.
+  -- Drain the TUI first, so these bytes do not land in the middle of a sequence
+  -- Neovim had already queued: everything after such a cut is printed as text.
   pcall(vim.api.nvim__redraw, { flush = true })
   local wrapped = {}
   for i = 1, #chunks do
     wrapped[i] = wrap(chunks[i])
   end
-  local ok = pcall(write_all, table.concat(wrapped))
-  if not ok then
-    broken = true
-  end
+  broken = not emit(table.concat(wrapped))
 end
 
 --- Base64 payload chunks may not exceed 4096 bytes.
@@ -232,11 +234,19 @@ end
 --- @param rows integer height in cells
 function M.place(chunks, id, placement, row, col, cols, rows)
   -- Save the cursor, jump to the cell, place, jump back: the protocol anchors
-  -- images to wherever the cursor is.
-  table.insert(chunks, ESC .. '7')
-  table.insert(chunks, ('%s[%d;%dH'):format(ESC, row, col))
-  table.insert(chunks, apc(('a=p,i=%d,p=%d,c=%d,r=%d,C=1,q=2'):format(id, placement, cols, rows)))
-  table.insert(chunks, ESC .. '8')
+  -- images to wherever the cursor is. The four go out as one chunk, and so
+  -- inside a single tmux wrapper — a cursor move that reaches the terminal on
+  -- its own can be undone by tmux repositioning before the placement lands, and
+  -- the sprite is left sitting in the corner of the screen.
+  table.insert(
+    chunks,
+    table.concat({
+      ESC .. '7',
+      ('%s[%d;%dH'):format(ESC, row, col),
+      apc(('a=p,i=%d,p=%d,c=%d,r=%d,C=1,q=2'):format(id, placement, cols, rows)),
+      ESC .. '8',
+    })
+  )
 end
 
 --- Draw a whole frame: clear last frame's placements, then place every pet.
@@ -253,16 +263,18 @@ function M.draw(placements)
   flush(chunks)
 end
 
---- Remove every image from the screen.
+--- Remove every image from the screen. Never refuses: an editor left with
+--- sprites burned over it is worse than one that writes to a dead terminal.
 function M.clear()
-  flush({ apc('a=d,d=a,q=2') })
+  broken = false
+  flush({ apc('a=d,d=a,q=2') }, true)
 end
 
 --- Forget transmitted images too — used when the sprite pack changes.
 function M.reset()
-  flush({ apc('a=d,d=A,q=2') })
-  ids = {}
   broken = false
+  flush({ apc('a=d,d=A,q=2') }, true)
+  ids = {}
 end
 
 return M

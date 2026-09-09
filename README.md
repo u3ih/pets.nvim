@@ -154,6 +154,11 @@ which is exactly as dignified as it sounds).
 Drive them yourself with `:Pets act run`, `:Pets act pace` or
 `require('pets').act('play')`.
 
+PNG sprites are painted by the terminal, above every Neovim window, so they
+step aside on their own while a picker, prompt or completion menu is open and
+come back when it closes. `:Pets clear` always takes them off the screen
+immediately, whatever else is going on.
+
 ## Reacting to your editor
 
 Beyond saves and diagnostics, two hooks let the pets respond to anything.

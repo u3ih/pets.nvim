@@ -315,6 +315,11 @@ function M.clear(opts)
   for _, name in ipairs(names) do
     M.release(name, opts)
   end
+  -- Releasing the herd has to clear the screen even when the farewell wave is
+  -- still playing, or the renderer has given up: whatever is on the terminal
+  -- right now is covering the user's work. The wave re-places its own sprites
+  -- on the next tick.
+  canvas.suspend_images()
 end
 
 --- Alias kept for callers written against the old name.
