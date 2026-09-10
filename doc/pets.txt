@@ -15,6 +15,7 @@ CONTENTS                                                        *pets-contents*
  10. API ................................... |pets-api|
  11. Backends .............................. |pets-backends|
  12. Health ................................ |pets-health|
+ 13. Credits ............................... |pets-credits|
 
 ==============================================================================
 1. INTRODUCTION                                             *pets-introduction*
@@ -331,9 +332,8 @@ KITTY GRAPHICS                                                   *pets-sprites*
     sprites burned on the terminal until you switch back. Focus events are how
     the pets learn they are no longer on screen. |:checkhealth| reports both.
 
-    The art is not shipped with this plugin. It belongs to the creators
-    credited by giusgad/pets.nvim, whose licence excludes the media folder from
-    its MIT terms.
+    The art is not shipped with this plugin and is used unmodified. It
+    belongs to the creators listed under |pets-credits|.
 
     Each PNG is transmitted to the terminal once — inline and base64-chunked,
     so it works over ssh — and afterwards only referenced by id. A frame is one
@@ -347,4 +347,35 @@ the sprite pack, tmux passthrough, the resolved strip geometry and the clock
 settings, and warns when the window is too short for the three-row strip or the
 state directory is not writable.
 
+==============================================================================
+13. CREDITS                                                      *pets-credits*
+
+The PNG sprite pack is downloaded on request and is not covered by this
+plugin's licence. The art belongs to its original creators:
+
+    dog             "dog animation - 4 different dogs" by NVPH Studio,
+                    licensed CC BY-ND 4.0. Used unmodified.
+                    https://nvph-studio.itch.io/dog-animation-4-different-dogs
+                    https://creativecommons.org/licenses/by-nd/4.0/
+
+    clippy,         by Marc Duiker for vscode-pets, under the vscode-pets
+    cockatiel,      licence.
+    crab, mod,      https://github.com/tonybaloney/vscode-pets
+    rocky,
+    rubber-duck,
+    snake, zappy
+
+    slime           by giusgad, MIT.
+                    https://github.com/giusgad/pets.nvim
+
+Assets under CC BY-ND 4.0 are distributed unmodified, as that licence
+requires: frames are read from disk and handed to the terminal byte for byte,
+and the terminal scales the placement to the configured cell box. Nothing here
+crops, recolours, flips or re-encodes a sprite, and the ASCII species are
+original drawings rather than tracings of the pixel art. The art is provided
+as-is, without warranties.
+
+The packs are assembled in giusgad/pets.nvim, which credits the same creators.
+
+==============================================================================
 vim:tw=78:ts=8:ft=help:norl:

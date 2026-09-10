@@ -1,9 +1,15 @@
 --- The PNG sprite pack used by the kitty backend.
 ---
 --- The art is *not* shipped with this plugin. It belongs to the creators
---- credited by giusgad/pets.nvim, whose licence explicitly excludes the media
---- folder, so it is fetched into `stdpath('data')` on request instead of being
---- vendored here.
+--- listed in the Credits section of the README — the dog pack is NVPH Studio's,
+--- under CC BY-ND 4.0 — and the media folder is excluded from the MIT terms of
+--- the repository it ships in, so it is fetched into `stdpath('data')` on
+--- request instead of being vendored here.
+---
+--- CC BY-ND forbids distributing adapted material, so frames are passed
+--- through untouched: `M.frames` returns paths, `graphics.lua` sends the file
+--- bytes verbatim and lets the terminal scale the placement. Do not add
+--- cropping, recolouring, flipping or re-encoding here.
 ---
 --- Layout, once installed:
 ---   <data>/pets.nvim/media/<species>/<style>/<action>/<n>.png

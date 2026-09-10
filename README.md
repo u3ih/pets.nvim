@@ -122,11 +122,16 @@ disappearing.
 
 ## Sprite pack
 
-The pixel art is **not** bundled: it belongs to the artists credited by
-[giusgad/pets.nvim](https://github.com/giusgad/pets.nvim#credits), whose licence
-excludes the `media/` folder from its MIT terms. `:Pets sprites` shallow-clones
-that repository into `stdpath('data')/pets.nvim/media`; `:Pets sprites remove`
-deletes it again.
+The pixel art is **not** bundled: it belongs to the artists credited under
+[Credits](#credits), and the `media/` folder is excluded from the MIT terms of
+the repository it ships in. `:Pets sprites` shallow-clones
+[giusgad/pets.nvim](https://github.com/giusgad/pets.nvim) into
+`stdpath('data')/pets.nvim/media`; `:Pets sprites remove` deletes it again.
+
+The art is used unmodified. Frames are read from disk and handed to the
+terminal byte for byte; the terminal scales the placement to the configured
+cell box. Nothing here crops, recolours, flips or re-encodes a sprite, and the
+ASCII species are original drawings rather than tracings of the pixel art.
 
 ## Configuration
 
@@ -320,11 +325,27 @@ missing sprite pack or tmux without `allow-passthrough`.
 
 ## Credits
 
-The PNG sprites come from the packs assembled for
-[giusgad/pets.nvim](https://github.com/giusgad/pets.nvim), which in turn credits
-their original creators. They are downloaded on request and are not covered by
-this repository's licence.
+The PNG sprites are downloaded on request from the packs assembled for
+[giusgad/pets.nvim](https://github.com/giusgad/pets.nvim#credits) and are not
+covered by this repository's licence. They belong to their original creators:
+
+- **dog** — [dog animation - 4 different
+  dogs](https://nvph-studio.itch.io/dog-animation-4-different-dogs) by [NVPH
+  Studio](https://nvph-studio.itch.io/), licensed
+  [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/). Used
+  unmodified.
+- **clippy**, **cockatiel**, **crab**, **mod**, **rocky**, **rubber-duck**,
+  **snake**, **zappy** — by [Marc Duiker](https://github.com/marcduiker) for
+  [vscode-pets](https://github.com/tonybaloney/vscode-pets), under the
+  [vscode-pets
+  licence](https://github.com/tonybaloney/vscode-pets/blob/master/LICENSE).
+- **slime** — by [giusgad](https://github.com/giusgad), MIT.
+
+Assets under CC BY-ND 4.0 are distributed unmodified, as that licence requires:
+this plugin renders each frame as shipped and creates no adapted material. The
+art is provided as-is, without warranties.
 
 ## License
 
-MIT (code). Sprite art belongs to its respective creators.
+MIT (code). Sprite art belongs to its respective creators, under the licences
+listed under [Credits](#credits).
