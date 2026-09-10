@@ -41,14 +41,45 @@ local frame_cache = nil
 --- @type table<string, string[]>|nil styles, keyed by species
 local index_cache = nil
 
+--- Where `:Pets sprites` puts the downloaded pack.
 --- @return string
 function M.root()
   return vim.fs.joinpath(vim.fn.stdpath('data') --[[@as string]], 'pets.nvim', 'media')
 end
 
+--- Where hand-added species live. A sibling of `media/` rather than a folder
+--- inside it, so `:Pets sprites install` and `remove` — both of which delete
+--- the pack root outright — cannot take somebody's own art with them.
+--- @return string
+function M.custom_root()
+  return vim.fs.joinpath(vim.fn.stdpath('data') --[[@as string]], 'pets.nvim', 'custom')
+end
+
+--- Art roots that exist, in search order: hand-added art shadows the pack, so
+--- dropping in a `cat/` folder overrides a `cat` the pack may later ship.
+--- @return string[]
+function M.roots()
+  local roots = {}
+  for _, root in ipairs({ M.custom_root(), M.root() }) do
+    if vim.fn.isdirectory(root) == 1 then
+      table.insert(roots, root)
+    end
+  end
+  return roots
+end
+
+--- Whether the downloaded pack is present. Hand-added art does not count —
+--- this gates the install/remove messaging, not rendering.
 --- @return boolean
 function M.installed()
   return vim.fn.isdirectory(M.root()) == 1
+end
+
+--- Whether any PNG species can be drawn, from either root. This is the one to
+--- check before choosing the graphics backend over ASCII.
+--- @return boolean
+function M.available()
+  return next(M.index()) ~= nil
 end
 
 --- Species and styles available on disk.
@@ -58,12 +89,17 @@ function M.index()
     return index_cache
   end
   local index = {}
-  if M.installed() then
-    for species, kind in vim.fs.dir(M.root()) do
+  for _, root in ipairs(M.roots()) do
+    for species, kind in vim.fs.dir(root) do
       if kind == 'directory' then
-        local styles = {}
-        for style, style_kind in vim.fs.dir(vim.fs.joinpath(M.root(), species)) do
-          if style_kind == 'directory' then
+        local styles = index[species] or {}
+        local seen = {}
+        for _, known in ipairs(styles) do
+          seen[known] = true
+        end
+        for style, style_kind in vim.fs.dir(vim.fs.joinpath(root, species)) do
+          if style_kind == 'directory' and not seen[style] then
+            seen[style] = true
             table.insert(styles, style)
           end
         end
@@ -114,12 +150,19 @@ function M.frames(species, style, state)
 
   local frames = {}
   for _, action in ipairs(ACTIONS[state] or ACTIONS.idle) do
-    local dir = vim.fs.joinpath(M.root(), species, style, action)
-    if vim.fn.isdirectory(dir) == 1 then
-      for name, kind in vim.fs.dir(dir) do
-        if kind == 'file' and name:match('%.png$') then
-          table.insert(frames, { n = tonumber(name:match('^(%d+)')) or 0, path = vim.fs.joinpath(dir, name) })
+    for _, root in ipairs(M.roots()) do
+      local dir = vim.fs.joinpath(root, species, style, action)
+      if vim.fn.isdirectory(dir) == 1 then
+        for name, kind in vim.fs.dir(dir) do
+          if kind == 'file' and name:match('%.png$') then
+            table.insert(frames, { n = tonumber(name:match('^(%d+)')) or 0, path = vim.fs.joinpath(dir, name) })
+          end
         end
+      end
+      -- One root wins per action, so a hand-added `walk` is never interleaved
+      -- with the pack's frames for the same action.
+      if #frames > 0 then
+        break
       end
     end
     if #frames > 0 then

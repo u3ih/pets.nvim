@@ -158,7 +158,7 @@ function M.setup(opts)
 
   M._initialised = true
 
-  if graphics.supported() and not assets.installed() then
+  if graphics.supported() and not assets.available() then
     vim.schedule(function()
       notify('this terminal can show PNG pets — run `:Pets sprites` to fetch the sprite pack')
     end)
@@ -180,11 +180,12 @@ function M.setup(opts)
   end
 end
 
---- Species available right now: the PNG pack when it is installed and the
---- terminal can show it, the built-in ASCII cast otherwise.
+--- Species available right now: the PNG art when the terminal can show it —
+--- the downloaded pack, hand-added species, or both — and the built-in ASCII
+--- cast otherwise.
 --- @return string[]
 function M.species()
-  if graphics.supported() and assets.installed() then
+  if graphics.supported() and assets.available() then
     local names = assets.species()
     if #names > 0 then
       return names

@@ -15,7 +15,8 @@ CONTENTS                                                        *pets-contents*
  10. API ................................... |pets-api|
  11. Backends .............................. |pets-backends|
  12. Health ................................ |pets-health|
- 13. Credits ............................... |pets-credits|
+ 13. Custom species ........................ |pets-custom-species|
+ 14. Credits ............................... |pets-credits|
 
 ==============================================================================
 1. INTRODUCTION                                             *pets-introduction*
@@ -348,7 +349,50 @@ settings, and warns when the window is too short for the three-row strip or the
 state directory is not writable.
 
 ==============================================================================
-13. CREDITS                                                      *pets-credits*
+13. CUSTOM SPECIES                                        *pets-custom-species*
+
+`:Pets sprites` owns the pack root and deletes it outright on both install and
+remove, so hand-placed art there does not survive. Your own species go in a
+sibling root instead: >
+
+    stdpath('data')/pets.nvim/custom/<species>/<style>/<action>/<n>.png
+<
+That root is searched first, so a `cat/` you add shadows a `cat` the pack might
+one day ship, and `:Pets sprites remove` leaves it alone. |:checkhealth| and
+`:Pets sprites status` both report it when present.
+
+Frames must be PNGs numbered from 0 on the pack's 128x88 canvas, with the
+sprite sitting on the bottom edge. Sheets downloaded from itch.io are packed
+grids instead, so convert them with the bundled script: >
+
+    ./scripts/import-sprites.py --sheet cat_walk.png --frame-size 32x32 \
+        --species cat --style tabby --action walk \
+        --author 'Artist name' --license 'the licence, verbatim' \
+        --source 'https://...'
+<
+It slices the sheet, upscales by an integer factor with nearest-neighbour so
+pixel art stays crisp, and bottom-anchors each frame. `--author`, `--license`
+and `--source` are required and are written to `<species>/CREDITS.txt`: art
+keeps the licence it was published under, and a licence nobody wrote down is a
+licence nobody can honour.
+
+Action folder names, and what falls back to what:
+
+    idle            standing around     -> sit, walk
+    walk            walking             -> run, idle
+    run             running             -> walk_fast, walk
+    sit             sitting             -> idle
+    liedown         sleeping            -> sit, idle
+    swipe           playing             -> pee, idle
+
+Import `idle` at minimum; it is the last resort in nearly every chain. A state
+with no art falls back to that species' ASCII drawing for as long as it lasts,
+so a half-imported pet degrades rather than disappearing. Add `_left` variants
+only if the licence permits derivatives — otherwise the right-facing frames
+are reused for both directions.
+
+==============================================================================
+14. CREDITS                                                      *pets-credits*
 
 The PNG sprite pack is downloaded on request and is not covered by this
 plugin's licence. The art belongs to its original creators:
@@ -376,6 +420,11 @@ original drawings rather than tracings of the pixel art. The art is provided
 as-is, without warranties.
 
 The packs are assembled in giusgad/pets.nvim, which credits the same creators.
+
+Species you add yourself are not listed here and are not redistributed by this
+project. They live only in your own data directory, under whatever licence you
+obtained them under, recorded in `custom/<species>/CREDITS.txt`. See
+|pets-custom-species|.
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:

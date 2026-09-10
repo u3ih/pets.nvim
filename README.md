@@ -133,6 +133,56 @@ terminal byte for byte; the terminal scales the placement to the configured
 cell box. Nothing here crops, recolours, flips or re-encodes a sprite, and the
 ASCII species are original drawings rather than tracings of the pixel art.
 
+## Adding your own species
+
+`:Pets sprites` owns `stdpath('data')/pets.nvim/media` and deletes that folder
+outright on both install and remove, so hand-placed art there does not survive.
+Your own species go in a sibling root instead:
+
+```
+stdpath('data')/pets.nvim/custom/<species>/<style>/<action>/<n>.png
+```
+
+That root is searched first, so a `cat/` you add shadows a `cat` the pack might
+one day ship, and `:Pets sprites remove` leaves it alone. `:Pets sprites status`
+and `:checkhealth pets` both report it when present.
+
+Sheets downloaded from itch.io are packed grids, not numbered frames on the
+pack's 128×88 canvas, so convert them:
+
+```bash
+./scripts/import-sprites.py --sheet cat_walk.png --frame-size 32x32 \
+    --species cat --style tabby --action walk \
+    --author 'Artist name' --license 'the licence, verbatim' \
+    --source 'https://…'
+```
+
+It slices the sheet, upscales by an integer factor (nearest-neighbour, so pixel
+art stays crisp), and bottom-anchors each frame the way the pack does. The crop
+box is the union across all frames rather than per-frame, so a bobbing head or a
+lifted paw stays animated instead of being re-centred into stillness.
+
+`--author`, `--license` and `--source` are required, and are written to
+`<species>/CREDITS.txt`. Art keeps whatever licence it was published under; a
+licence nobody wrote down is a licence nobody can honour.
+
+Useful action names, and what falls back to what:
+
+| Action | Used for | Falls back to |
+| --- | --- | --- |
+| `idle` | standing around | `sit`, `walk` |
+| `walk` | walking | `run`, `idle` |
+| `run` | running | `walk_fast`, `walk` |
+| `sit` | sitting | `idle` |
+| `liedown` | sleeping | `sit`, `idle` |
+| `swipe` | playing | `pee`, `idle` |
+
+Import `idle` at minimum — it is the last resort in nearly every chain. A state
+with no art falls back to that species' ASCII drawing for as long as it lasts,
+so a half-imported pet degrades rather than disappearing. Add `_left` variants
+(`walk_left`) only if the art's licence permits derivatives; otherwise the
+right-facing frames are reused for both directions.
+
 ## Configuration
 
 Defaults shown; pass only what you want to change.
@@ -344,6 +394,11 @@ covered by this repository's licence. They belong to their original creators:
 Assets under CC BY-ND 4.0 are distributed unmodified, as that licence requires:
 this plugin renders each frame as shipped and creates no adapted material. The
 art is provided as-is, without warranties.
+
+Species you add yourself are not listed here and are not redistributed by this
+project — they live only in your own data directory, under whatever licence you
+got them under, recorded in `custom/<species>/CREDITS.txt`. See
+[Adding your own species](#adding-your-own-species).
 
 ## License
 

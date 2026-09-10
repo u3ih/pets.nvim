@@ -33,8 +33,13 @@ function M.check()
     health.ok(('kitty graphics backend active (backend = %q)'):format(cfg.backend))
     if assets.installed() then
       health.ok(('sprite pack: %d species in %s'):format(#assets.species(), assets.root()))
+    elseif assets.available() then
+      health.warn('sprite pack not installed, but hand-added art was found. Run `:Pets sprites` for the rest')
     else
       health.warn('sprite pack not installed — pets fall back to ASCII. Run `:Pets sprites`')
+    end
+    if vim.fn.isdirectory(assets.custom_root()) == 1 then
+      health.ok(('hand-added art: %s'):format(assets.custom_root()))
     end
     if vim.env.TMUX and not graphics.tmux_ready() then
       health.error('tmux swallows the image escapes: add `set -g allow-passthrough on` to tmux.conf')

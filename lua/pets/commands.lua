@@ -60,7 +60,10 @@ subcommands.sprites = {
         ('backend: %s'):format(graphics.supported() and 'kitty graphics' or 'text'),
         ('sprite pack: %s'):format(assets.installed() and assets.root() or 'not installed'),
       }
-      if assets.installed() then
+      if vim.fn.isdirectory(assets.custom_root()) == 1 then
+        table.insert(lines, ('hand-added art: %s'):format(assets.custom_root()))
+      end
+      if assets.available() then
         table.insert(lines, ('species: %s'):format(table.concat(assets.species(), ', ')))
       end
       if vim.env.TMUX and not graphics.tmux_ready() then
