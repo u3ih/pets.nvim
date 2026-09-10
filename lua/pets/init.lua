@@ -160,7 +160,7 @@ function M.setup(opts)
 
   if graphics.supported() and not assets.available() then
     vim.schedule(function()
-      notify('this terminal can show PNG pets — run `:Pets sprites` to fetch the sprite pack')
+      notify('this terminal can show PNG pets — run `:Pets sprites` to fetch the optional sprite pack')
     end)
   end
 

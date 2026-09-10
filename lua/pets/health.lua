@@ -34,9 +34,12 @@ function M.check()
     if assets.installed() then
       health.ok(('sprite pack: %d species in %s'):format(#assets.species(), assets.root()))
     elseif assets.available() then
-      health.warn('sprite pack not installed, but hand-added art was found. Run `:Pets sprites` for the rest')
+      health.ok('optional sprite pack not installed; drawing from bundled or hand-added art')
     else
       health.warn('sprite pack not installed — pets fall back to ASCII. Run `:Pets sprites`')
+    end
+    if vim.fn.isdirectory(assets.bundled_root()) == 1 then
+      health.ok(('bundled art: %s'):format(assets.bundled_root()))
     end
     if vim.fn.isdirectory(assets.custom_root()) == 1 then
       health.ok(('hand-added art: %s'):format(assets.custom_root()))

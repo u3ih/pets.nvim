@@ -58,8 +58,11 @@ subcommands.sprites = {
     if action == 'status' or assets.installed() then
       local lines = {
         ('backend: %s'):format(graphics.supported() and 'kitty graphics' or 'text'),
-        ('sprite pack: %s'):format(assets.installed() and assets.root() or 'not installed'),
+        ('sprite pack: %s'):format(assets.installed() and assets.root() or 'not installed (optional)'),
       }
+      if vim.fn.isdirectory(assets.bundled_root()) == 1 then
+        table.insert(lines, ('bundled art: %s'):format(assets.bundled_root()))
+      end
       if vim.fn.isdirectory(assets.custom_root()) == 1 then
         table.insert(lines, ('hand-added art: %s'):format(assets.custom_root()))
       end

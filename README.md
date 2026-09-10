@@ -110,28 +110,37 @@ One command, with completion on both the subcommand and its argument:
 | `:Pets hide` | Toggle the strip without losing the pets. |
 | `:Pets sleep` | Toggle do-not-disturb. |
 | `:Pets act {walk\|run\|pace\|sit\|play\|sleep} [name]` | Make the herd — or one pet — do something. |
-| `:Pets sprites [install\|remove\|status]` | Manage the PNG sprite pack. |
+| `:Pets sprites [install\|remove\|status]` | Manage the optional upstream sprite pack. |
 
 ASCII species: `cat`, `crab`, `dog`, `duck`, `ghost`, `slime`, `snake`.
 
-PNG species, once the pack is installed: `clippy`, `cockatiel`, `crab`, `dog`,
+PNG species, all shipped with the plugin: `clippy`, `cockatiel`, `crab`, `dog`,
 `mod`, `rocky`, `rubber-duck`, `slime`, `snake`, `zappy` — each with several
 colour styles, offered by `:Pets pick`. A PNG species opened in a terminal
 without graphics support is drawn as the closest ASCII shape rather than
 disappearing.
 
-## Sprite pack
+## Sprite art
 
-The pixel art is **not** bundled: it belongs to the artists credited under
-[Credits](#credits), and the `media/` folder is excluded from the MIT terms of
-the repository it ships in. `:Pets sprites` shallow-clones
-[giusgad/pets.nvim](https://github.com/giusgad/pets.nvim) into
-`stdpath('data')/pets.nvim/media`; `:Pets sprites remove` deletes it again.
+The pixel art ships in [`resources/`](resources/), so a clone draws PNG pets
+immediately — no download, no `git` executable, no network. It also means the
+plugin does not break if the repository it was assembled from changes shape.
 
-The art is used unmodified. Frames are read from disk and handed to the
-terminal byte for byte; the terminal scales the placement to the configured
-cell box. Nothing here crops, recolours, flips or re-encodes a sprite, and the
-ASCII species are original drawings rather than tracings of the pixel art.
+The art is third-party and **not** covered by this repository's MIT licence.
+Each pack keeps its own terms, reproduced in full in
+[`resources/LICENSES.md`](resources/LICENSES.md) and summarised under
+[Credits](#credits).
+
+It is redistributed unmodified, which is what the dog pack's CC BY-ND licence
+requires. Frames are read from disk and handed to the terminal byte for byte;
+the terminal scales the placement to the configured cell box. Nothing here
+crops, recolours, flips or re-encodes a sprite, and the ASCII species are
+original drawings rather than tracings of the pixel art. **If you fork this and
+edit the dog sprites, you may not redistribute the edited versions.**
+
+`:Pets sprites` remains as an optional way to pull the upstream pack into
+`stdpath('data')/pets.nvim/media`, should it gain species this bundle lacks.
+Bundled art takes precedence, so installing it changes nothing by default.
 
 ## Adding your own species
 
@@ -143,9 +152,10 @@ Your own species go in a sibling root instead:
 stdpath('data')/pets.nvim/custom/<species>/<style>/<action>/<n>.png
 ```
 
-That root is searched first, so a `cat/` you add shadows a `cat` the pack might
-one day ship, and `:Pets sprites remove` leaves it alone. `:Pets sprites status`
-and `:checkhealth pets` both report it when present.
+That root is searched first — ahead of both `resources/` and the optional
+download — so a `cat/` you add shadows a bundled `cat` of the same name, and
+`:Pets sprites remove` leaves it alone. `:Pets sprites status` and
+`:checkhealth pets` both report it when present.
 
 Sheets downloaded from itch.io are packed grids, not numbered frames on the
 pack's 128×88 canvas, so convert them:
@@ -375,9 +385,10 @@ missing sprite pack or tmux without `allow-passthrough`.
 
 ## Credits
 
-The PNG sprites are downloaded on request from the packs assembled for
-[giusgad/pets.nvim](https://github.com/giusgad/pets.nvim#credits) and are not
-covered by this repository's licence. They belong to their original creators:
+The PNG sprites in [`resources/`](resources/) are redistributed here
+unmodified, are not covered by this repository's licence, and belong to their
+original creators. Full licence texts are in
+[`resources/LICENSES.md`](resources/LICENSES.md):
 
 - **dog** — [dog animation - 4 different
   dogs](https://nvph-studio.itch.io/dog-animation-4-different-dogs) by [NVPH
@@ -392,8 +403,8 @@ covered by this repository's licence. They belong to their original creators:
 - **slime** — by [giusgad](https://github.com/giusgad), MIT.
 
 Assets under CC BY-ND 4.0 are distributed unmodified, as that licence requires:
-this plugin renders each frame as shipped and creates no adapted material. The
-art is provided as-is, without warranties.
+the bundled files are byte-for-byte copies, and the plugin renders each frame as
+shipped rather than adapting it. The art is provided as-is, without warranties.
 
 Species you add yourself are not listed here and are not redistributed by this
 project — they live only in your own data directory, under whatever licence you
@@ -402,5 +413,6 @@ got them under, recorded in `custom/<species>/CREDITS.txt`. See
 
 ## License
 
-MIT (code). Sprite art belongs to its respective creators, under the licences
-listed under [Credits](#credits).
+MIT for the code. The art in [`resources/`](resources/) is **excluded** from
+those terms and stays under its creators' own licences — see
+[`resources/LICENSES.md`](resources/LICENSES.md).

@@ -333,8 +333,9 @@ KITTY GRAPHICS                                                   *pets-sprites*
     sprites burned on the terminal until you switch back. Focus events are how
     the pets learn they are no longer on screen. |:checkhealth| reports both.
 
-    The art is not shipped with this plugin and is used unmodified. It
-    belongs to the creators listed under |pets-credits|.
+    The art ships in the plugin's `resources/` directory and is used
+    unmodified. It is third-party work, not covered by this plugin's licence;
+    see |pets-credits| and resources/LICENSES.md.
 
     Each PNG is transmitted to the terminal once — inline and base64-chunked,
     so it works over ssh — and afterwards only referenced by id. A frame is one
@@ -351,14 +352,17 @@ state directory is not writable.
 ==============================================================================
 13. CUSTOM SPECIES                                        *pets-custom-species*
 
-`:Pets sprites` owns the pack root and deletes it outright on both install and
-remove, so hand-placed art there does not survive. Your own species go in a
-sibling root instead: >
+The plugin draws from three roots: your own art, the bundled `resources/`
+directory, and the pack `:Pets sprites` optionally downloads. `:Pets sprites`
+owns that last one and deletes it outright on both install and remove, so
+hand-placed art there does not survive. Your own species go in a separate root
+instead: >
 
     stdpath('data')/pets.nvim/custom/<species>/<style>/<action>/<n>.png
 <
-That root is searched first, so a `cat/` you add shadows a `cat` the pack might
-one day ship, and `:Pets sprites remove` leaves it alone. |:checkhealth| and
+That root is searched first -- ahead of both the bundled `resources/` and the
+optional download -- so a `cat/` you add shadows a bundled `cat` of the same
+name, and `:Pets sprites remove` leaves it alone. |:checkhealth| and
 `:Pets sprites status` both report it when present.
 
 Frames must be PNGs numbered from 0 on the pack's 128x88 canvas, with the
@@ -394,8 +398,9 @@ are reused for both directions.
 ==============================================================================
 14. CREDITS                                                      *pets-credits*
 
-The PNG sprite pack is downloaded on request and is not covered by this
-plugin's licence. The art belongs to its original creators:
+The PNG art ships in the plugin's `resources/` directory, redistributed
+unmodified. It is not covered by this plugin's licence and belongs to its
+original creators. Full licence texts are in resources/LICENSES.md:
 
     dog             "dog animation - 4 different dogs" by NVPH Studio,
                     licensed CC BY-ND 4.0. Used unmodified.
@@ -413,13 +418,17 @@ plugin's licence. The art belongs to its original creators:
                     https://github.com/giusgad/pets.nvim
 
 Assets under CC BY-ND 4.0 are distributed unmodified, as that licence
-requires: frames are read from disk and handed to the terminal byte for byte,
-and the terminal scales the placement to the configured cell box. Nothing here
-crops, recolours, flips or re-encodes a sprite, and the ASCII species are
-original drawings rather than tracings of the pixel art. The art is provided
-as-is, without warranties.
+requires: the bundled files are byte-for-byte copies, frames are handed to the
+terminal as they are, and the terminal scales the placement to the configured
+cell box. Nothing here crops, recolours, flips or re-encodes a sprite, and the
+ASCII species are original drawings rather than tracings of the pixel art. If
+you fork this plugin and edit the dog sprites, you may not redistribute the
+edited versions. The art is provided as-is, without warranties.
 
-The packs are assembled in giusgad/pets.nvim, which credits the same creators.
+The packs were assembled in giusgad/pets.nvim, which credits the same
+creators. `:Pets sprites` can still pull that repository into
+stdpath('data')/pets.nvim/media, should it gain species this bundle lacks;
+bundled art takes precedence, so installing it changes nothing by default.
 
 Species you add yourself are not listed here and are not redistributed by this
 project. They live only in your own data directory, under whatever licence you

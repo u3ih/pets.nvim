@@ -47,6 +47,20 @@ function M.root()
   return vim.fs.joinpath(vim.fn.stdpath('data') --[[@as string]], 'pets.nvim', 'media')
 end
 
+--- The plugin's own directory, worked out from this file rather than from the
+--- runtimepath: `nvim_get_runtime_file` would happily match a `resources/`
+--- belonging to somebody else's plugin.
+local PLUGIN_ROOT = vim.fs.normalize(
+  vim.fs.joinpath(vim.fs.dirname(debug.getinfo(1, 'S').source:sub(2)), '..', '..')
+)
+
+--- Art shipped inside the plugin, so a clone is playable with no download, no
+--- `git` executable and no network.
+--- @return string
+function M.bundled_root()
+  return vim.fs.joinpath(PLUGIN_ROOT, 'resources')
+end
+
 --- Where hand-added species live. A sibling of `media/` rather than a folder
 --- inside it, so `:Pets sprites install` and `remove` — both of which delete
 --- the pack root outright — cannot take somebody's own art with them.
@@ -55,12 +69,15 @@ function M.custom_root()
   return vim.fs.joinpath(vim.fn.stdpath('data') --[[@as string]], 'pets.nvim', 'custom')
 end
 
---- Art roots that exist, in search order: hand-added art shadows the pack, so
---- dropping in a `cat/` folder overrides a `cat` the pack may later ship.
+--- Art roots that exist, in search order — your own art, then what ships with
+--- the plugin, then the optional download. Dropping in a `cat/` folder
+--- overrides a `cat` from either of the other two, and bundled art wins over
+--- the download so a clone behaves the same whether or not anyone fetched the
+--- pack.
 --- @return string[]
 function M.roots()
   local roots = {}
-  for _, root in ipairs({ M.custom_root(), M.root() }) do
+  for _, root in ipairs({ M.custom_root(), M.bundled_root(), M.root() }) do
     if vim.fn.isdirectory(root) == 1 then
       table.insert(roots, root)
     end
@@ -68,8 +85,8 @@ function M.roots()
   return roots
 end
 
---- Whether the downloaded pack is present. Hand-added art does not count —
---- this gates the install/remove messaging, not rendering.
+--- Whether the optional download is present. Bundled and hand-added art do not
+--- count — this gates the install/remove messaging, not rendering.
 --- @return boolean
 function M.installed()
   return vim.fn.isdirectory(M.root()) == 1
