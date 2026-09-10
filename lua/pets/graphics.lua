@@ -22,12 +22,33 @@ local ST = ESC .. '\\'
 --- then only referenced.
 --- @type table<string, integer>
 local ids = {}
+--- Transmission order, oldest first, so the working set can be trimmed.
+--- @type string[]
+local resident = {}
 local next_id = 1000
+
+--- How many sprite frames may sit in the terminal at once.
+---
+--- Transmitted images are the *terminal's* memory, not ours, and it holds them
+--- decoded: a 128x88 frame is 45KB of RGBA. Deleting a placement (`d=a`) does
+--- not touch the data behind it, so without a cap a long session that walks
+--- every action of every style parks forty-odd megabytes in the terminal until
+--- Neovim exits. A cap of 96 covers every frame on screen several times over —
+--- eight pets times a handful of frames per action — and holds the terminal
+--- side to roughly four megabytes.
+local MAX_RESIDENT = 96
 
 --- True once a write to the terminal has failed; stops us spamming a dead one.
 --- Always cleared before a wipe, so getting the pets off the screen never
 --- depends on the last frame having worked.
 local broken = false
+
+--- Signature of the frame the terminal is currently showing, so an unchanged
+--- one costs neither a redraw flush nor a write. Cleared by everything that
+--- takes the images back off the screen, since after that the terminal needs
+--- the frame again even though it is identical.
+--- @type string|nil
+local last_placements = nil
 
 --- @type boolean|nil memoised: nothing here changes while Neovim runs
 local supported_cache = nil
@@ -230,6 +251,7 @@ function M.image(path, chunks)
   next_id = next_id + 1
   id = next_id
   ids[path] = id
+  table.insert(resident, path)
 
   -- a=t transmit only, f=100 PNG, m=1 more chunks follow, q=2 stay quiet.
   local payload = vim.base64.encode(data)
@@ -274,24 +296,86 @@ function M.place(chunks, id, placement, row, col, cols, rows)
   )
 end
 
+--- Hand the terminal back the frames it is least likely to need next.
+---
+--- Anything drawn in the frame being built is off limits — dropping an image
+--- that is about to be placed leaves a hole where a pet should be.
+--- @param chunks string[]
+--- @param keep table<string, boolean> paths used by the frame being drawn
+local function trim_resident(chunks, keep)
+  local i = 1
+  while #resident > MAX_RESIDENT and i <= #resident do
+    local path = resident[i]
+    if keep[path] then
+      i = i + 1
+    else
+      -- d=i drops the image data as well as its placements, which is the whole
+      -- point: d=a would leave the bytes sitting in the terminal.
+      table.insert(chunks, apc(('a=d,d=i,i=%d,q=2'):format(ids[path])))
+      ids[path] = nil
+      table.remove(resident, i)
+    end
+  end
+end
+
 --- Draw a whole frame: clear last frame's placements, then place every pet.
 --- @param placements { path: string, placement: integer, row: integer, col: integer, cols: integer, rows: integer }[]
 function M.draw(placements)
+  -- Reading and base64-ing sprites for a terminal that already refused a write
+  -- is pure waste; `M.clear` resets `broken` when it is worth trying again.
+  if broken then
+    return
+  end
+
   local row_offset, col_offset = M.tmux_offset()
-  local chunks = { apc('a=d,d=a,q=2') } -- delete placements, keep transmitted data
+  local signature = { row_offset, col_offset }
   for _, p in ipairs(placements) do
+    table.insert(signature, ('%s|%d|%d|%d|%d|%d'):format(p.path, p.placement, p.row, p.col, p.cols, p.rows))
+  end
+  signature = table.concat(signature, '\n')
+  if signature == last_placements then
+    return
+  end
+  last_placements = signature
+
+  local chunks = { apc('a=d,d=a,q=2') } -- delete placements, keep transmitted data
+  local keep, fresh = {}, {}
+  for _, p in ipairs(placements) do
+    local known = ids[p.path] ~= nil
     local id = M.image(p.path, chunks)
     if id then
+      keep[p.path] = true
+      if not known then
+        table.insert(fresh, p.path)
+      end
       M.place(chunks, id, p.placement, p.row + row_offset, p.col + col_offset, p.cols, p.rows)
     end
   end
+  trim_resident(chunks, keep)
   flush(chunks)
+
+  -- A dropped frame means the terminal never received those bytes, so it would
+  -- ignore every later placement that referenced them and the pet would simply
+  -- stop being drawn. Forget them and transmit again next time.
+  if broken then
+    last_placements = nil
+    for _, path in ipairs(fresh) do
+      ids[path] = nil
+      for i = #resident, 1, -1 do
+        if resident[i] == path then
+          table.remove(resident, i)
+          break
+        end
+      end
+    end
+  end
 end
 
 --- Remove every image from the screen. Never refuses: an editor left with
 --- sprites burned over it is worse than one that writes to a dead terminal.
 function M.clear()
   broken = false
+  last_placements = nil
   flush({ apc('a=d,d=a,q=2') }, true)
 end
 
@@ -310,6 +394,8 @@ function M.shutdown()
   end
   broken = false
   ids = {}
+  resident = {}
+  last_placements = nil
   local data = wrap(apc('a=d,d=A,q=2'))
   pcall(function()
     io.stdout:write(data)
@@ -322,6 +408,8 @@ function M.reset()
   broken = false
   flush({ apc('a=d,d=A,q=2') }, true)
   ids = {}
+  resident = {}
+  last_placements = nil
 end
 
 return M

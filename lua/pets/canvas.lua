@@ -14,6 +14,28 @@ M.hidden = false
 --- Set while PNG placements are on screen, so they can be cleaned up.
 M.drew_images = false
 
+--- Signature of the frame currently sitting in the buffer.
+---
+--- `nvim_buf_set_lines` on a buffer that carries extmarks costs Neovim about
+--- 1.6KB of its own heap per call, and that memory is never handed back — the
+--- Lua collector cannot see it. Writing the strip once per tick therefore leaks
+--- tens of megabytes an hour for as long as pets are on screen. Most of those
+--- writes are redundant: the graphics backend leaves all three rows blank
+--- forever, and a dozing or sitting herd repeats the same frame. Comparing the
+--- frame against the last one written turns those ticks into no-ops.
+--- @type string|nil
+local last_frame = nil
+
+--- Frames written into the current buffer, and how many are allowed.
+---
+--- The same Neovim leak bites the ASCII renderer, which cannot skip its writes:
+--- a walking pet really does change the rows. Nothing hands that memory back
+--- except retiring the buffer it accumulated on, so the strip trades its buffer
+--- in periodically. At eight frames a second 600 writes is a little over a
+--- minute, and the swap costs one buffer created and one deleted.
+local writes = 0
+local WRITES_PER_BUFFER = 600
+
 --- Mood highlights are links, so they follow whatever colorscheme is loaded.
 local HL_LINKS = {
   PetsBody = 'Comment',
@@ -85,6 +107,9 @@ local function ensure_buf()
     return M.buf
   end
   M.buf = vim.api.nvim_create_buf(false, true)
+  -- A fresh buffer holds none of the last frame, so the next render has to write.
+  last_frame = nil
+  writes = 0
   vim.bo[M.buf].bufhidden = 'hide'
   vim.bo[M.buf].buftype = 'nofile'
   vim.bo[M.buf].swapfile = false
@@ -154,6 +179,46 @@ local function place(row, s, x, width)
   return row:sub(1, start) .. s:sub(from + 1, from + count) .. row:sub(start + count + 1)
 end
 
+--- Write one frame into `buf`: the three rows, dimmed, with the eyes picked out
+--- in the mood colour.
+--- @param buf integer
+--- @param rows string[]
+--- @param faces { col: integer, len: integer, hl: string }[]
+local function paint(buf, rows, faces)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, rows)
+  vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+  for i = 0, 2 do
+    vim.api.nvim_buf_set_extmark(buf, ns, i, 0, { end_col = #rows[i + 1], hl_group = 'PetsBody' })
+  end
+  for _, face in ipairs(faces) do
+    vim.api.nvim_buf_set_extmark(buf, ns, 1, face.col, { end_col = face.col + face.len, hl_group = face.hl })
+  end
+end
+
+--- Retire the buffer the animation has been accumulating on, in favour of an
+--- identical fresh one.
+---
+--- The replacement is painted before it is shown, so the swap is invisible.
+--- @param win integer
+--- @param rows string[]
+--- @param faces { col: integer, len: integer, hl: string }[]
+local function recycle_buf(win, rows, faces)
+  local old = M.buf
+  M.buf = nil
+  writes = 0
+  local fresh = ensure_buf()
+  paint(fresh, rows, faces)
+  -- The strip is a decoration, not a file the user opened: swapping it in must
+  -- not set off everybody's BufEnter and BufWinEnter handlers.
+  local saved = vim.o.eventignore
+  vim.o.eventignore = 'all'
+  pcall(vim.api.nvim_win_set_buf, win, fresh)
+  vim.o.eventignore = saved
+  if old and vim.api.nvim_buf_is_valid(old) then
+    pcall(vim.api.nvim_buf_delete, old, { force = true })
+  end
+end
+
 --- Draw the herd.
 ---
 --- Both renderers share this one window. ASCII pets are written into the
@@ -219,15 +284,19 @@ function M.render(pets, ambient)
   end
 
   local buf = ensure_buf()
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, rows)
-  vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-
-  -- Dim the whole sprite, then paint just the eyes with the mood colour.
-  for i = 0, 2 do
-    vim.api.nvim_buf_set_extmark(buf, ns, i, 0, { end_col = #rows[i + 1], hl_group = 'PetsBody' })
-  end
+  local frame = { rows[1], rows[2], rows[3] }
   for _, face in ipairs(faces) do
-    vim.api.nvim_buf_set_extmark(buf, ns, 1, face.col, { end_col = face.col + face.len, hl_group = face.hl })
+    table.insert(frame, ('%d:%d:%s'):format(face.col, face.len, face.hl))
+  end
+  local signature = table.concat(frame, '\n')
+  if signature ~= last_frame then
+    last_frame = signature
+    paint(buf, rows, faces)
+    writes = writes + 1
+    if writes >= WRITES_PER_BUFFER then
+      recycle_buf(win, rows, faces)
+      last_frame = signature
+    end
   end
 
   if #images > 0 and not M.obscured() then
@@ -275,6 +344,8 @@ function M.destroy()
     vim.api.nvim_buf_delete(M.buf, { force = true })
   end
   M.buf = nil
+  last_frame = nil
+  writes = 0
 end
 
 return M

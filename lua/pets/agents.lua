@@ -28,6 +28,21 @@ M.tracked = {}
 --- 'off' | 'idle' | 'busy' — what the herd is currently reacting to.
 M.state = 'off'
 
+--- Buffers that already carry one of our `on_lines` listeners.
+---
+--- `nvim_buf_attach` hands back no handle: a listener can only be removed from
+--- inside itself, by returning true on a call it will never get once the
+--- terminal has stopped producing output. So a closed agent terminal that is
+--- shown again — `TermClose` cleared `tracked`, `BufWinEnter` re-attaches —
+--- used to stack a second listener on top of the first, and a third after that.
+--- Keeping the registry means an existing listener is adopted instead.
+--- @type table<integer, boolean>
+local listeners = {}
+
+--- Bumped by `reset()`. A listener from an older epoch retires on its next call
+--- rather than reacting on behalf of a configuration that is gone.
+local epoch = 0
+
 local function cfg()
   return require('pets.config').options.agents
 end
@@ -95,23 +110,33 @@ function M.attach(buf)
 
   -- Terminal buffers do not fire TextChanged, but they do report line updates
   -- to an attached listener.
-  vim.api.nvim_buf_attach(buf, false, {
-    on_lines = function()
-      local entry = M.tracked[buf]
-      if not entry then
-        return true -- detach
-      end
-      entry.last_output = uv.now()
-      if not entry.busy then
-        entry.busy = true
-        M.state = 'busy'
-        react('busy')
-      end
-    end,
-    on_detach = function()
-      M.detach(buf)
-    end,
-  })
+  if not listeners[buf] then
+    listeners[buf] = true
+    local mine = epoch
+    vim.api.nvim_buf_attach(buf, false, {
+      on_lines = function()
+        if mine ~= epoch then
+          return true -- a reset happened; retire rather than keep reacting
+        end
+        local entry = M.tracked[buf]
+        if not entry then
+          -- The terminal is not being tracked right now, but the buffer is
+          -- alive and may be adopted again. Stay attached and stay quiet.
+          return
+        end
+        entry.last_output = uv.now()
+        if not entry.busy then
+          entry.busy = true
+          M.state = 'busy'
+          react('busy')
+        end
+      end,
+      on_detach = function()
+        listeners[buf] = nil
+        M.detach(buf)
+      end,
+    })
+  end
 
   M.state = 'idle'
   react('open')
@@ -152,6 +177,10 @@ end
 --- Forget everything; used when the config is reloaded.
 function M.reset()
   M.tracked = {}
+  -- The listeners themselves cannot be revoked from here; retiring the epoch
+  -- makes each one stand down on its next call, and `scan()` attaches afresh.
+  listeners = {}
+  epoch = epoch + 1
   M.state = 'off'
 end
 
