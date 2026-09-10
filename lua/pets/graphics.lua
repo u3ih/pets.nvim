@@ -22,9 +22,13 @@ local ST = ESC .. '\\'
 --- then only referenced.
 --- @type table<string, integer>
 local ids = {}
---- Transmission order, oldest first, so the working set can be trimmed.
---- @type string[]
-local resident = {}
+--- The frame each resident image was last drawn on, so the least recently used
+--- can be identified. Counts as the terminal's working set.
+--- @type table<string, integer>
+local last_drawn = {}
+local resident = 0
+--- Advances once per drawn frame; only used to order `last_drawn`.
+local drawn_at = 0
 local next_id = 1000
 
 --- How many sprite frames may sit in the terminal at once.
@@ -32,11 +36,17 @@ local next_id = 1000
 --- Transmitted images are the *terminal's* memory, not ours, and it holds them
 --- decoded: a 128x88 frame is 45KB of RGBA. Deleting a placement (`d=a`) does
 --- not touch the data behind it, so without a cap a long session that walks
---- every action of every style parks forty-odd megabytes in the terminal until
---- Neovim exits. A cap of 96 covers every frame on screen several times over —
---- eight pets times a handful of frames per action — and holds the terminal
---- side to roughly four megabytes.
-local MAX_RESIDENT = 96
+--- every action of every style parks forty-odd megabytes there until Neovim
+--- exits.
+---
+--- The cap has to clear the working set with room to spare, or it does more
+--- harm than good: a herd cycling through walk, run and idle frames touches a
+--- few hundred files, and evicting one that is about to come round again just
+--- makes the terminal decode it a second time. Measured over 8000 frames with
+--- eight pets, a cap of 96 caused 683 transmissions where 43 were needed. This
+--- holds the terminal to about 17MB in the worst case and, in practice, to the
+--- handful of actions the herd is actually using.
+local MAX_RESIDENT = 384
 
 --- True once a write to the terminal has failed; stops us spamming a dead one.
 --- Always cleared before a wipe, so getting the pets off the screen never
@@ -251,7 +261,7 @@ function M.image(path, chunks)
   next_id = next_id + 1
   id = next_id
   ids[path] = id
-  table.insert(resident, path)
+  resident = resident + 1
 
   -- a=t transmit only, f=100 PNG, m=1 more chunks follow, q=2 stay quiet.
   local payload = vim.base64.encode(data)
@@ -298,23 +308,28 @@ end
 
 --- Hand the terminal back the frames it is least likely to need next.
 ---
---- Anything drawn in the frame being built is off limits — dropping an image
---- that is about to be placed leaves a hole where a pet should be.
+--- Least recently drawn first, and never anything in the frame being built:
+--- dropping an image that is about to be placed leaves a hole where a pet
+--- should be, and dropping one the animation is still cycling through only
+--- buys a re-transmission a few frames later.
 --- @param chunks string[]
---- @param keep table<string, boolean> paths used by the frame being drawn
-local function trim_resident(chunks, keep)
-  local i = 1
-  while #resident > MAX_RESIDENT and i <= #resident do
-    local path = resident[i]
-    if keep[path] then
-      i = i + 1
-    else
-      -- d=i drops the image data as well as its placements, which is the whole
-      -- point: d=a would leave the bytes sitting in the terminal.
-      table.insert(chunks, apc(('a=d,d=i,i=%d,q=2'):format(ids[path])))
-      ids[path] = nil
-      table.remove(resident, i)
+local function trim_resident(chunks)
+  while resident > MAX_RESIDENT do
+    local oldest, oldest_at = nil, math.huge
+    for path, at in pairs(last_drawn) do
+      if at < drawn_at and at < oldest_at then
+        oldest, oldest_at = path, at
+      end
     end
+    if not oldest then
+      return -- everything resident is on screen right now
+    end
+    -- d=i drops the image data as well as its placements, which is the whole
+    -- point: d=a would leave the bytes sitting in the terminal.
+    table.insert(chunks, apc(('a=d,d=i,i=%d,q=2'):format(ids[oldest])))
+    ids[oldest] = nil
+    last_drawn[oldest] = nil
+    resident = resident - 1
   end
 end
 
@@ -339,19 +354,20 @@ function M.draw(placements)
   last_placements = signature
 
   local chunks = { apc('a=d,d=a,q=2') } -- delete placements, keep transmitted data
-  local keep, fresh = {}, {}
+  local fresh = {}
+  drawn_at = drawn_at + 1
   for _, p in ipairs(placements) do
     local known = ids[p.path] ~= nil
     local id = M.image(p.path, chunks)
     if id then
-      keep[p.path] = true
+      last_drawn[p.path] = drawn_at
       if not known then
         table.insert(fresh, p.path)
       end
       M.place(chunks, id, p.placement, p.row + row_offset, p.col + col_offset, p.cols, p.rows)
     end
   end
-  trim_resident(chunks, keep)
+  trim_resident(chunks)
   flush(chunks)
 
   -- A dropped frame means the terminal never received those bytes, so it would
@@ -361,12 +377,8 @@ function M.draw(placements)
     last_placements = nil
     for _, path in ipairs(fresh) do
       ids[path] = nil
-      for i = #resident, 1, -1 do
-        if resident[i] == path then
-          table.remove(resident, i)
-          break
-        end
-      end
+      last_drawn[path] = nil
+      resident = resident - 1
     end
   end
 end
@@ -394,7 +406,8 @@ function M.shutdown()
   end
   broken = false
   ids = {}
-  resident = {}
+  resident = 0
+  last_drawn = {}
   last_placements = nil
   local data = wrap(apc('a=d,d=A,q=2'))
   pcall(function()
@@ -408,7 +421,8 @@ function M.reset()
   broken = false
   flush({ apc('a=d,d=A,q=2') }, true)
   ids = {}
-  resident = {}
+  resident = 0
+  last_drawn = {}
   last_placements = nil
 end
 
