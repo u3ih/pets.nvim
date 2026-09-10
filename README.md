@@ -55,22 +55,45 @@ on both.
 
 ## Install
 
-lazy.nvim:
+[lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 { 'u3ih/pets.nvim', event = 'VeryLazy', opts = {} }
 ```
 
-Working on a local checkout instead:
+[NvChad](https://nvchad.com) and [LazyVim](https://lazyvim.org) both run on
+lazy.nvim, so the same spec goes in `lua/plugins/pets.lua`:
 
 ```lua
-{
-  dir = '~/Work-space/u3ih/pets.nvim',
-  name = 'pets.nvim',
-  cmd = 'Pets',
-  opts = {},
+return {
+  { 'u3ih/pets.nvim', event = 'VeryLazy', opts = {} },
 }
 ```
+
+[mini.deps](https://github.com/echasnovski/mini.nvim):
+
+```lua
+MiniDeps.add('u3ih/pets.nvim')
+require('pets').setup({})
+```
+
+[packer.nvim](https://github.com/wbthomason/packer.nvim):
+
+```lua
+use({ 'u3ih/pets.nvim', config = function() require('pets').setup({}) end })
+```
+
+[vim-plug](https://github.com/junegunn/vim-plug):
+
+```vim
+Plug 'u3ih/pets.nvim'
+" after plug#end()
+lua require('pets').setup({})
+```
+
+`setup()` is what restores a saved herd, so load the plugin at startup —
+`event = 'VeryLazy'` above — rather than on `:Pets` alone. Then run `:Pets
+sprites` once for the PNG art.
 
 ## Usage
 

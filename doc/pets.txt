@@ -44,9 +44,24 @@ and the sprite pack; see |pets-backends|.
 >lua
     require('pets').setup({})
 <
-With lazy.nvim: >lua
-    { 'u3ih/pets.nvim', cmd = 'Pets', opts = {} }
+lazy.nvim — NvChad and LazyVim run on it too, so the same spec goes in
+`lua/plugins/pets.lua`: >lua
+    { 'u3ih/pets.nvim', event = 'VeryLazy', opts = {} }
 <
+mini.deps: >lua
+    MiniDeps.add('u3ih/pets.nvim')
+    require('pets').setup({})
+<
+packer.nvim: >lua
+    use({ 'u3ih/pets.nvim', config = function() require('pets').setup({}) end })
+<
+vim-plug, after `plug#end()`: >vim
+    Plug 'u3ih/pets.nvim'
+    lua require('pets').setup({})
+<
+`setup()` is what restores a saved herd, so load the plugin at startup rather
+than on `:Pets` alone. Then run `:Pets sprites` once for the PNG art.
+
 ==============================================================================
 4. COMMANDS                                                     *pets-commands*
 
