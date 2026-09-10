@@ -38,54 +38,38 @@ subcommands.act = {
   end,
 }
 
-subcommands.sprites = {
-  desc = 'Pets sprites [install|remove] — manage the PNG sprite pack',
-  complete = function()
-    return { 'install', 'remove', 'status' }
-  end,
-  run = function(args)
+subcommands.status = {
+  desc = 'Pets status — backend, art roots and what is currently drawable',
+  run = function()
     local assets = require('pets.assets')
     local graphics = require('pets.graphics')
-    local action = args[1] or 'install'
 
-    if action == 'remove' then
-      graphics.reset()
-      api().clear({ animate = false })
-      vim.notify('pets.nvim: ' .. (assets.uninstall() and 'sprite pack removed' or 'nothing to remove'), vim.log.levels.INFO)
-      return
+    local lines = {
+      ('backend: %s'):format(graphics.supported() and 'kitty graphics' or 'text'),
+      ('bundled art: %s'):format(assets.bundled_root()),
+    }
+    if vim.fn.isdirectory(assets.custom_root()) == 1 then
+      table.insert(lines, ('hand-added art: %s'):format(assets.custom_root()))
+    end
+    if assets.available() then
+      table.insert(lines, ('species: %s'):format(table.concat(assets.species(), ', ')))
+    else
+      table.insert(lines, 'no PNG art found — pets render as ASCII')
+    end
+    if vim.env.TMUX and not graphics.tmux_ready() then
+      table.insert(lines, 'tmux: add `set -g allow-passthrough on` or images stay invisible')
+    end
+    local agents = require('pets.agents')
+    table.insert(lines, ('agents: %s (%d terminal(s) tracked)'):format(agents.state, vim.tbl_count(agents.tracked)))
+    if not graphics.supported() then
+      table.insert(lines, 'this terminal has no kitty graphics support — pets render as ASCII')
+    end
+    local legacy = assets.legacy_pack()
+    if legacy then
+      table.insert(lines, ('unused: %s can be deleted (the art now ships with the plugin)'):format(legacy))
     end
 
-    if action == 'status' or assets.installed() then
-      local lines = {
-        ('backend: %s'):format(graphics.supported() and 'kitty graphics' or 'text'),
-        ('sprite pack: %s'):format(assets.installed() and assets.root() or 'not installed (optional)'),
-      }
-      if vim.fn.isdirectory(assets.bundled_root()) == 1 then
-        table.insert(lines, ('bundled art: %s'):format(assets.bundled_root()))
-      end
-      if vim.fn.isdirectory(assets.custom_root()) == 1 then
-        table.insert(lines, ('hand-added art: %s'):format(assets.custom_root()))
-      end
-      if assets.available() then
-        table.insert(lines, ('species: %s'):format(table.concat(assets.species(), ', ')))
-      end
-      if vim.env.TMUX and not graphics.tmux_ready() then
-        table.insert(lines, 'tmux: add `set -g allow-passthrough on` or images stay invisible')
-      end
-      local agents = require('pets.agents')
-      table.insert(lines, ('agents: %s (%d terminal(s) tracked)'):format(agents.state, vim.tbl_count(agents.tracked)))
-      if not graphics.supported() then
-        table.insert(lines, 'this terminal has no kitty graphics support — pets render as ASCII')
-      end
-      if action == 'status' then
-        vim.notify('pets.nvim\n  ' .. table.concat(lines, '\n  '), vim.log.levels.INFO)
-        return
-      end
-      vim.notify('pets.nvim: sprite pack already installed (`:Pets sprites remove` to drop it)', vim.log.levels.INFO)
-      return
-    end
-
-    assets.install()
+    vim.notify('pets.nvim\n  ' .. table.concat(lines, '\n  '), vim.log.levels.INFO)
   end,
 }
 

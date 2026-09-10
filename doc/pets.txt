@@ -62,7 +62,8 @@ vim-plug, after `plug#end()`: >vim
     lua require('pets').setup({})
 <
 `setup()` is what restores a saved herd, so load the plugin at startup rather
-than on `:Pets` alone. Then run `:Pets sprites` once for the PNG art.
+than on `:Pets` alone. The PNG art ships with the plugin; there is nothing to
+download.
 
 ==============================================================================
 4. COMMANDS                                                     *pets-commands*
@@ -98,12 +99,13 @@ than on `:Pets` alone. Then run `:Pets sprites` once for the PNG art.
     Make the herd, or one named pet, do something. {action} is walk, run, sit,
     play, sleep or idle. See |pets-actions|.
 
-:Pets sprites [install|remove|status]
-    Manage the PNG sprite pack. See |pets-backends|.
+:Pets status
+    Report the backend, the art roots, the species available, tmux
+    passthrough and agent tracking. See |pets-backends|.
 
 ASCII species: cat, crab, dog, duck, ghost, slime, snake.
-PNG species (with the pack installed): clippy, cockatiel, crab, dog, mod,
-rocky, rubber-duck, slime, snake, zappy — each with several colour styles.
+PNG species (all bundled): clippy, cockatiel, crab, dog, mod, rocky,
+rubber-duck, slime, snake, zappy — each with several colour styles.
 
 ==============================================================================
 5. CONFIGURATION                                           *pets-configuration*
@@ -315,16 +317,13 @@ TEXT
 
 KITTY GRAPHICS                                                   *pets-sprites*
     PNG sprites drawn straight onto the terminal with the kitty graphics
-    protocol. Needs three things:
+    protocol. Needs two things:
 
     1. A terminal that implements the protocol: kitty, ghostty, WezTerm or
        Konsole. Detection reads $KITTY_WINDOW_ID, $GHOSTTY_RESOURCES_DIR,
        $WEZTERM_PANE, $KONSOLE_VERSION, $TERM_PROGRAM and $TERM; force it with
        `backend = 'kitty'` when that is not enough.
-    2. The sprite pack: `:Pets sprites`. It shallow-clones
-       giusgad/pets.nvim into `stdpath('data')/pets.nvim/media` and keeps only
-       the media folder. `git` is required.
-    3. Inside tmux, passthrough and focus events: >tmux
+    2. Inside tmux, passthrough and focus events: >tmux
         set -g allow-passthrough all
         set -g focus-events on
 <
@@ -352,18 +351,17 @@ state directory is not writable.
 ==============================================================================
 13. CUSTOM SPECIES                                        *pets-custom-species*
 
-The plugin draws from three roots: your own art, the bundled `resources/`
-directory, and the pack `:Pets sprites` optionally downloads. `:Pets sprites`
-owns that last one and deletes it outright on both install and remove, so
-hand-placed art there does not survive. Your own species go in a separate root
-instead: >
+The plugin draws from two roots: your own art and the bundled `resources/`
+directory. Art bundled with the plugin lives inside the plugin directory,
+which your plugin manager overwrites on every update, so your own species go
+under stdpath('data') instead, where nothing the plugin does can reach
+them: >
 
     stdpath('data')/pets.nvim/custom/<species>/<style>/<action>/<n>.png
 <
-That root is searched first -- ahead of both the bundled `resources/` and the
-optional download -- so a `cat/` you add shadows a bundled `cat` of the same
-name, and `:Pets sprites remove` leaves it alone. |:checkhealth| and
-`:Pets sprites status` both report it when present.
+That root is searched ahead of the bundled `resources/`, so a `cat/` you add
+shadows a bundled `cat` of the same name. |:checkhealth| and `:Pets status`
+both report it when present.
 
 Frames must be PNGs numbered from 0 on the pack's 128x88 canvas, with the
 sprite sitting on the bottom edge. Sheets downloaded from itch.io are packed
@@ -426,9 +424,10 @@ you fork this plugin and edit the dog sprites, you may not redistribute the
 edited versions. The art is provided as-is, without warranties.
 
 The packs were assembled in giusgad/pets.nvim, which credits the same
-creators. `:Pets sprites` can still pull that repository into
-stdpath('data')/pets.nvim/media, should it gain species this bundle lacks;
-bundled art takes precedence, so installing it changes nothing by default.
+creators. Earlier versions of this plugin downloaded them from there at
+runtime; the art is bundled now, and a leftover
+stdpath('data')/pets.nvim/media from those versions is unused and can be
+deleted. |:checkhealth| points it out when it is present.
 
 Species you add yourself are not listed here and are not redistributed by this
 project. They live only in your own data directory, under whatever licence you

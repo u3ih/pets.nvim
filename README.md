@@ -39,8 +39,8 @@ so the plugin degrades instead of showing nothing. A herd can mix both.
 Neovim 0.10+. No plugin dependencies and no Nerd Font.
 
 PNG pets additionally need a terminal that implements the kitty graphics
-protocol, plus the sprite pack (`:Pets sprites`, `git` required). Inside tmux,
-add to your `tmux.conf`:
+protocol. The art ships with the plugin, so there is nothing to download.
+Inside tmux, add to your `tmux.conf`:
 
 ```tmux
 set -g allow-passthrough all
@@ -110,7 +110,7 @@ One command, with completion on both the subcommand and its argument:
 | `:Pets hide` | Toggle the strip without losing the pets. |
 | `:Pets sleep` | Toggle do-not-disturb. |
 | `:Pets act {walk\|run\|pace\|sit\|play\|sleep} [name]` | Make the herd — or one pet — do something. |
-| `:Pets sprites [install\|remove\|status]` | Manage the optional upstream sprite pack. |
+| `:Pets status` | Backend, art roots, and what is currently drawable. |
 
 ASCII species: `cat`, `crab`, `dog`, `duck`, `ghost`, `slime`, `snake`.
 
@@ -138,24 +138,19 @@ crops, recolours, flips or re-encodes a sprite, and the ASCII species are
 original drawings rather than tracings of the pixel art. **If you fork this and
 edit the dog sprites, you may not redistribute the edited versions.**
 
-`:Pets sprites` remains as an optional way to pull the upstream pack into
-`stdpath('data')/pets.nvim/media`, should it gain species this bundle lacks.
-Bundled art takes precedence, so installing it changes nothing by default.
-
 ## Adding your own species
 
-`:Pets sprites` owns `stdpath('data')/pets.nvim/media` and deletes that folder
-outright on both install and remove, so hand-placed art there does not survive.
-Your own species go in a sibling root instead:
+Art bundled with the plugin lives inside the plugin directory, which your
+plugin manager overwrites on every update. Your own species go under
+`stdpath('data')` instead, where nothing the plugin does can reach them:
 
 ```
 stdpath('data')/pets.nvim/custom/<species>/<style>/<action>/<n>.png
 ```
 
-That root is searched first — ahead of both `resources/` and the optional
-download — so a `cat/` you add shadows a bundled `cat` of the same name, and
-`:Pets sprites remove` leaves it alone. `:Pets sprites status` and
-`:checkhealth pets` both report it when present.
+That root is searched ahead of `resources/`, so a `cat/` you add shadows a
+bundled `cat` of the same name. `:Pets status` and `:checkhealth pets` both
+report it when present.
 
 Sheets downloaded from itch.io are packed grids, not numbered frames on the
 pack's 128×88 canvas, so convert them:
@@ -377,11 +372,11 @@ pets.statusline()                              --> string
 ## Troubleshooting
 
 `:checkhealth pets` reports the Neovim version, which backend is active, the
-sprite pack status, tmux passthrough, the resolved geometry, whether the state
+the art roots, tmux passthrough, the resolved geometry, whether the state
 directory is writable and how many pets are on screen.
 
-Pets invisible on kitty? Check `:Pets sprites status` — the usual causes are a
-missing sprite pack or tmux without `allow-passthrough`.
+Pets invisible on kitty? Check `:Pets status` — the usual cause is tmux
+without `allow-passthrough`.
 
 ## Credits
 
