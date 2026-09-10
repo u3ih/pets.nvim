@@ -15,6 +15,8 @@ CONTENTS                                                        *pets-contents*
  10. API ................................... |pets-api|
  11. Backends .............................. |pets-backends|
  12. Health ................................ |pets-health|
+ 13. Custom species ........................ |pets-custom-species|
+ 14. Credits ............................... |pets-credits|
 
 ==============================================================================
 1. INTRODUCTION                                             *pets-introduction*
@@ -60,7 +62,8 @@ vim-plug, after `plug#end()`: >vim
     lua require('pets').setup({})
 <
 `setup()` is what restores a saved herd, so load the plugin at startup rather
-than on `:Pets` alone. Then run `:Pets sprites` once for the PNG art.
+than on `:Pets` alone. The PNG art ships with the plugin; there is nothing to
+download.
 
 ==============================================================================
 4. COMMANDS                                                     *pets-commands*
@@ -96,12 +99,13 @@ than on `:Pets` alone. Then run `:Pets sprites` once for the PNG art.
     Make the herd, or one named pet, do something. {action} is walk, run, sit,
     play, sleep or idle. See |pets-actions|.
 
-:Pets sprites [install|remove|status]
-    Manage the PNG sprite pack. See |pets-backends|.
+:Pets status
+    Report the backend, the art roots, the species available, tmux
+    passthrough and agent tracking. See |pets-backends|.
 
 ASCII species: cat, crab, dog, duck, ghost, slime, snake.
-PNG species (with the pack installed): clippy, cockatiel, crab, dog, mod,
-rocky, rubber-duck, slime, snake, zappy — each with several colour styles.
+PNG species (all bundled): clippy, cockatiel, crab, dog, mod, rocky,
+rubber-duck, slime, snake, zappy — each with several colour styles.
 
 ==============================================================================
 5. CONFIGURATION                                           *pets-configuration*
@@ -313,16 +317,13 @@ TEXT
 
 KITTY GRAPHICS                                                   *pets-sprites*
     PNG sprites drawn straight onto the terminal with the kitty graphics
-    protocol. Needs three things:
+    protocol. Needs two things:
 
     1. A terminal that implements the protocol: kitty, ghostty, WezTerm or
        Konsole. Detection reads $KITTY_WINDOW_ID, $GHOSTTY_RESOURCES_DIR,
        $WEZTERM_PANE, $KONSOLE_VERSION, $TERM_PROGRAM and $TERM; force it with
        `backend = 'kitty'` when that is not enough.
-    2. The sprite pack: `:Pets sprites`. It shallow-clones
-       giusgad/pets.nvim into `stdpath('data')/pets.nvim/media` and keeps only
-       the media folder. `git` is required.
-    3. Inside tmux, passthrough and focus events: >tmux
+    2. Inside tmux, passthrough and focus events: >tmux
         set -g allow-passthrough all
         set -g focus-events on
 <
@@ -331,9 +332,9 @@ KITTY GRAPHICS                                                   *pets-sprites*
     sprites burned on the terminal until you switch back. Focus events are how
     the pets learn they are no longer on screen. |:checkhealth| reports both.
 
-    The art is not shipped with this plugin. It belongs to the creators
-    credited by giusgad/pets.nvim, whose licence excludes the media folder from
-    its MIT terms.
+    The art ships in the plugin's `resources/` directory and is used
+    unmodified. It is third-party work, not covered by this plugin's licence;
+    see |pets-credits| and resources/LICENSES.md.
 
     Each PNG is transmitted to the terminal once — inline and base64-chunked,
     so it works over ssh — and afterwards only referenced by id. A frame is one
@@ -347,4 +348,91 @@ the sprite pack, tmux passthrough, the resolved strip geometry and the clock
 settings, and warns when the window is too short for the three-row strip or the
 state directory is not writable.
 
+==============================================================================
+13. CUSTOM SPECIES                                        *pets-custom-species*
+
+The plugin draws from two roots: your own art and the bundled `resources/`
+directory. Art bundled with the plugin lives inside the plugin directory,
+which your plugin manager overwrites on every update, so your own species go
+under stdpath('data') instead, where nothing the plugin does can reach
+them: >
+
+    stdpath('data')/pets.nvim/custom/<species>/<style>/<action>/<n>.png
+<
+That root is searched ahead of the bundled `resources/`, so a `cat/` you add
+shadows a bundled `cat` of the same name. |:checkhealth| and `:Pets status`
+both report it when present.
+
+Frames must be PNGs numbered from 0 on the pack's 128x88 canvas, with the
+sprite sitting on the bottom edge. Sheets downloaded from itch.io are packed
+grids instead, so convert them with the bundled script: >
+
+    ./scripts/import-sprites.py --sheet cat_walk.png --frame-size 32x32 \
+        --species cat --style tabby --action walk \
+        --author 'Artist name' --license 'the licence, verbatim' \
+        --source 'https://...'
+<
+It slices the sheet, upscales by an integer factor with nearest-neighbour so
+pixel art stays crisp, and bottom-anchors each frame. `--author`, `--license`
+and `--source` are required and are written to `<species>/CREDITS.txt`: art
+keeps the licence it was published under, and a licence nobody wrote down is a
+licence nobody can honour.
+
+Action folder names, and what falls back to what:
+
+    idle            standing around     -> sit, walk
+    walk            walking             -> run, idle
+    run             running             -> walk_fast, walk
+    sit             sitting             -> idle
+    liedown         sleeping            -> sit, idle
+    swipe           playing             -> pee, idle
+
+Import `idle` at minimum; it is the last resort in nearly every chain. A state
+with no art falls back to that species' ASCII drawing for as long as it lasts,
+so a half-imported pet degrades rather than disappearing. Add `_left` variants
+only if the licence permits derivatives — otherwise the right-facing frames
+are reused for both directions.
+
+==============================================================================
+14. CREDITS                                                      *pets-credits*
+
+The PNG art ships in the plugin's `resources/` directory, redistributed
+unmodified. It is not covered by this plugin's licence and belongs to its
+original creators. Full licence texts are in resources/LICENSES.md:
+
+    dog             "dog animation - 4 different dogs" by NVPH Studio,
+                    licensed CC BY-ND 4.0. Used unmodified.
+                    https://nvph-studio.itch.io/dog-animation-4-different-dogs
+                    https://creativecommons.org/licenses/by-nd/4.0/
+
+    clippy,         by Marc Duiker for vscode-pets, under the vscode-pets
+    cockatiel,      licence.
+    crab, mod,      https://github.com/tonybaloney/vscode-pets
+    rocky,
+    rubber-duck,
+    snake, zappy
+
+    slime           by giusgad, MIT.
+                    https://github.com/giusgad/pets.nvim
+
+Assets under CC BY-ND 4.0 are distributed unmodified, as that licence
+requires: the bundled files are byte-for-byte copies, frames are handed to the
+terminal as they are, and the terminal scales the placement to the configured
+cell box. Nothing here crops, recolours, flips or re-encodes a sprite, and the
+ASCII species are original drawings rather than tracings of the pixel art. If
+you fork this plugin and edit the dog sprites, you may not redistribute the
+edited versions. The art is provided as-is, without warranties.
+
+The packs were assembled in giusgad/pets.nvim, which credits the same
+creators. Earlier versions of this plugin downloaded them from there at
+runtime; the art is bundled now, and a leftover
+stdpath('data')/pets.nvim/media from those versions is unused and can be
+deleted. |:checkhealth| points it out when it is present.
+
+Species you add yourself are not listed here and are not redistributed by this
+project. They live only in your own data directory, under whatever licence you
+obtained them under, recorded in `custom/<species>/CREDITS.txt`. See
+|pets-custom-species|.
+
+==============================================================================
 vim:tw=78:ts=8:ft=help:norl:

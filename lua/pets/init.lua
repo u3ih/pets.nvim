@@ -158,12 +158,6 @@ function M.setup(opts)
 
   M._initialised = true
 
-  if graphics.supported() and not assets.installed() then
-    vim.schedule(function()
-      notify('this terminal can show PNG pets — run `:Pets sprites` to fetch the sprite pack')
-    end)
-  end
-
   -- Restore before autostart, so a saved herd is not doubled on every launch.
   local restored = 0
   for _, state in ipairs(session.load()) do
@@ -180,11 +174,12 @@ function M.setup(opts)
   end
 end
 
---- Species available right now: the PNG pack when it is installed and the
---- terminal can show it, the built-in ASCII cast otherwise.
+--- Species available right now: the PNG art when the terminal can show it —
+--- the downloaded pack, hand-added species, or both — and the built-in ASCII
+--- cast otherwise.
 --- @return string[]
 function M.species()
-  if graphics.supported() and assets.installed() then
+  if graphics.supported() and assets.available() then
     local names = assets.species()
     if #names > 0 then
       return names
@@ -328,8 +323,8 @@ function M.list()
   return M._pets
 end
 
---- Pick a species — and, when the PNG pack is installed, a colour — from a
---- menu instead of memorising the names.
+--- Pick a species — and, for PNG species, a colour — from a menu instead of
+--- memorising the names.
 function M.pick()
   vim.ui.select(M.species(), {
     prompt = 'Adopt which pet?',

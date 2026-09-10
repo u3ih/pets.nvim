@@ -31,10 +31,18 @@ function M.check()
   local assets = require('pets.assets')
   if graphics.supported() then
     health.ok(('kitty graphics backend active (backend = %q)'):format(cfg.backend))
-    if assets.installed() then
-      health.ok(('sprite pack: %d species in %s'):format(#assets.species(), assets.root()))
+    if assets.available() then
+      health.ok(('%d PNG species available'):format(#assets.species()))
     else
-      health.warn('sprite pack not installed — pets fall back to ASCII. Run `:Pets sprites`')
+      health.warn('no PNG art found — pets fall back to ASCII. Is resources/ missing from the install?')
+    end
+    if vim.fn.isdirectory(assets.bundled_root()) == 1 then
+      health.ok(('bundled art: %s'):format(assets.bundled_root()))
+    else
+      health.error(('bundled art missing: %s'):format(assets.bundled_root()))
+    end
+    if vim.fn.isdirectory(assets.custom_root()) == 1 then
+      health.ok(('hand-added art: %s'):format(assets.custom_root()))
     end
     if vim.env.TMUX and not graphics.tmux_ready() then
       health.error('tmux swallows the image escapes: add `set -g allow-passthrough on` to tmux.conf')
@@ -58,6 +66,11 @@ function M.check()
     end
   else
     health.info('text backend: this terminal does not advertise the kitty graphics protocol')
+  end
+
+  local legacy = assets.legacy_pack()
+  if legacy then
+    health.info(('%s is left over from an older version and can be deleted'):format(legacy))
   end
 
   local canvas = require('pets.canvas')

@@ -2,6 +2,11 @@ MIT License
 
 Copyright (c) 2026 hieuchan
 
+These terms cover the plugin code and documentation. They do NOT cover the
+artwork in the resources/ directory, which is third-party work redistributed
+unmodified under its creators' own licences -- including CC BY-ND 4.0 art,
+which may not be redistributed in adapted form. See resources/LICENSES.md.
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

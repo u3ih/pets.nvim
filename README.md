@@ -39,8 +39,8 @@ so the plugin degrades instead of showing nothing. A herd can mix both.
 Neovim 0.10+. No plugin dependencies and no Nerd Font.
 
 PNG pets additionally need a terminal that implements the kitty graphics
-protocol, plus the sprite pack (`:Pets sprites`, `git` required). Inside tmux,
-add to your `tmux.conf`:
+protocol. The art ships with the plugin, so there is nothing to download.
+Inside tmux, add to your `tmux.conf`:
 
 ```tmux
 set -g allow-passthrough all
@@ -110,23 +110,83 @@ One command, with completion on both the subcommand and its argument:
 | `:Pets hide` | Toggle the strip without losing the pets. |
 | `:Pets sleep` | Toggle do-not-disturb. |
 | `:Pets act {walk\|run\|pace\|sit\|play\|sleep} [name]` | Make the herd — or one pet — do something. |
-| `:Pets sprites [install\|remove\|status]` | Manage the PNG sprite pack. |
+| `:Pets status` | Backend, art roots, and what is currently drawable. |
 
 ASCII species: `cat`, `crab`, `dog`, `duck`, `ghost`, `slime`, `snake`.
 
-PNG species, once the pack is installed: `clippy`, `cockatiel`, `crab`, `dog`,
+PNG species, all shipped with the plugin: `clippy`, `cockatiel`, `crab`, `dog`,
 `mod`, `rocky`, `rubber-duck`, `slime`, `snake`, `zappy` — each with several
 colour styles, offered by `:Pets pick`. A PNG species opened in a terminal
 without graphics support is drawn as the closest ASCII shape rather than
 disappearing.
 
-## Sprite pack
+## Sprite art
 
-The pixel art is **not** bundled: it belongs to the artists credited by
-[giusgad/pets.nvim](https://github.com/giusgad/pets.nvim#credits), whose licence
-excludes the `media/` folder from its MIT terms. `:Pets sprites` shallow-clones
-that repository into `stdpath('data')/pets.nvim/media`; `:Pets sprites remove`
-deletes it again.
+The pixel art ships in [`resources/`](resources/), so a clone draws PNG pets
+immediately — no download, no `git` executable, no network. It also means the
+plugin does not break if the repository it was assembled from changes shape.
+
+The art is third-party and **not** covered by this repository's MIT licence.
+Each pack keeps its own terms, reproduced in full in
+[`resources/LICENSES.md`](resources/LICENSES.md) and summarised under
+[Credits](#credits).
+
+It is redistributed unmodified, which is what the dog pack's CC BY-ND licence
+requires. Frames are read from disk and handed to the terminal byte for byte;
+the terminal scales the placement to the configured cell box. Nothing here
+crops, recolours, flips or re-encodes a sprite, and the ASCII species are
+original drawings rather than tracings of the pixel art. **If you fork this and
+edit the dog sprites, you may not redistribute the edited versions.**
+
+## Adding your own species
+
+Art bundled with the plugin lives inside the plugin directory, which your
+plugin manager overwrites on every update. Your own species go under
+`stdpath('data')` instead, where nothing the plugin does can reach them:
+
+```
+stdpath('data')/pets.nvim/custom/<species>/<style>/<action>/<n>.png
+```
+
+That root is searched ahead of `resources/`, so a `cat/` you add shadows a
+bundled `cat` of the same name. `:Pets status` and `:checkhealth pets` both
+report it when present.
+
+Sheets downloaded from itch.io are packed grids, not numbered frames on the
+pack's 128×88 canvas, so convert them:
+
+```bash
+./scripts/import-sprites.py --sheet cat_walk.png --frame-size 32x32 \
+    --species cat --style tabby --action walk \
+    --author 'Artist name' --license 'the licence, verbatim' \
+    --source 'https://…'
+```
+
+It slices the sheet, upscales by an integer factor (nearest-neighbour, so pixel
+art stays crisp), and bottom-anchors each frame the way the pack does. The crop
+box is the union across all frames rather than per-frame, so a bobbing head or a
+lifted paw stays animated instead of being re-centred into stillness.
+
+`--author`, `--license` and `--source` are required, and are written to
+`<species>/CREDITS.txt`. Art keeps whatever licence it was published under; a
+licence nobody wrote down is a licence nobody can honour.
+
+Useful action names, and what falls back to what:
+
+| Action | Used for | Falls back to |
+| --- | --- | --- |
+| `idle` | standing around | `sit`, `walk` |
+| `walk` | walking | `run`, `idle` |
+| `run` | running | `walk_fast`, `walk` |
+| `sit` | sitting | `idle` |
+| `liedown` | sleeping | `sit`, `idle` |
+| `swipe` | playing | `pee`, `idle` |
+
+Import `idle` at minimum — it is the last resort in nearly every chain. A state
+with no art falls back to that species' ASCII drawing for as long as it lasts,
+so a half-imported pet degrades rather than disappearing. Add `_left` variants
+(`walk_left`) only if the art's licence permits derivatives; otherwise the
+right-facing frames are reused for both directions.
 
 ## Configuration
 
@@ -312,19 +372,42 @@ pets.statusline()                              --> string
 ## Troubleshooting
 
 `:checkhealth pets` reports the Neovim version, which backend is active, the
-sprite pack status, tmux passthrough, the resolved geometry, whether the state
+the art roots, tmux passthrough, the resolved geometry, whether the state
 directory is writable and how many pets are on screen.
 
-Pets invisible on kitty? Check `:Pets sprites status` — the usual causes are a
-missing sprite pack or tmux without `allow-passthrough`.
+Pets invisible on kitty? Check `:Pets status` — the usual cause is tmux
+without `allow-passthrough`.
 
 ## Credits
 
-The PNG sprites come from the packs assembled for
-[giusgad/pets.nvim](https://github.com/giusgad/pets.nvim), which in turn credits
-their original creators. They are downloaded on request and are not covered by
-this repository's licence.
+The PNG sprites in [`resources/`](resources/) are redistributed here
+unmodified, are not covered by this repository's licence, and belong to their
+original creators. Full licence texts are in
+[`resources/LICENSES.md`](resources/LICENSES.md):
+
+- **dog** — [dog animation - 4 different
+  dogs](https://nvph-studio.itch.io/dog-animation-4-different-dogs) by [NVPH
+  Studio](https://nvph-studio.itch.io/), licensed
+  [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/). Used
+  unmodified.
+- **clippy**, **cockatiel**, **crab**, **mod**, **rocky**, **rubber-duck**,
+  **snake**, **zappy** — by [Marc Duiker](https://github.com/marcduiker) for
+  [vscode-pets](https://github.com/tonybaloney/vscode-pets), under the
+  [vscode-pets
+  licence](https://github.com/tonybaloney/vscode-pets/blob/master/LICENSE).
+- **slime** — by [giusgad](https://github.com/giusgad), MIT.
+
+Assets under CC BY-ND 4.0 are distributed unmodified, as that licence requires:
+the bundled files are byte-for-byte copies, and the plugin renders each frame as
+shipped rather than adapting it. The art is provided as-is, without warranties.
+
+Species you add yourself are not listed here and are not redistributed by this
+project — they live only in your own data directory, under whatever licence you
+got them under, recorded in `custom/<species>/CREDITS.txt`. See
+[Adding your own species](#adding-your-own-species).
 
 ## License
 
-MIT (code). Sprite art belongs to its respective creators.
+MIT for the code. The art in [`resources/`](resources/) is **excluded** from
+those terms and stays under its creators' own licences — see
+[`resources/LICENSES.md`](resources/LICENSES.md).
