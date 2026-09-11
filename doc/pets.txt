@@ -323,6 +323,15 @@ KITTY GRAPHICS                                                   *pets-sprites*
        Konsole. Detection reads $KITTY_WINDOW_ID, $GHOSTTY_RESOURCES_DIR,
        $WEZTERM_PANE, $KONSOLE_VERSION, $TERM_PROGRAM and $TERM; force it with
        `backend = 'kitty'` when that is not enough.
+
+       Those variables are inherited into |:terminal| jobs, so they say
+       nothing about a Neovim running inside another editor's terminal — a
+       commit editor opened by a lazygit in a terminal buffer, for instance.
+       Such a Neovim is detected by $NVIM and $VIM_TERMINAL and uses the text
+       backend: only the terminal at the bottom of the stack can draw the
+       images, and the emulator in between prints the escapes as text rather
+       than dropping them. `backend = 'kitty'` overrides this and puts the
+       base64 on screen; |:checkhealth| reports it as an error.
     2. Inside tmux, passthrough and focus events: >tmux
         set -g allow-passthrough all
         set -g focus-events on
@@ -345,8 +354,9 @@ KITTY GRAPHICS                                                   *pets-sprites*
 
 `:checkhealth pets` verifies the Neovim version, reports the active backend,
 the sprite pack, tmux passthrough, the resolved strip geometry and the clock
-settings, and warns when the window is too short for the three-row strip or the
-state directory is not writable.
+settings, and warns when the window is too short for the three-row strip, the
+state directory is not writable or the kitty backend is forced inside another
+editor's terminal.
 
 ==============================================================================
 13. CUSTOM SPECIES                                        *pets-custom-species*

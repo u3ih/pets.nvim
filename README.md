@@ -53,6 +53,11 @@ sprites burned on the terminal until you switch back. `focus-events` is how the
 pets find out they are no longer being looked at. `:checkhealth pets` reports
 on both.
 
+A Neovim running inside another Neovim's `:terminal` — as lazygit's commit
+editor, say — falls back to ASCII on purpose. Only the real terminal at the
+bottom of the stack can draw the images, and the terminal emulator in between
+prints the escapes as text instead of dropping them.
+
 ## Install
 
 [lazy.nvim](https://github.com/folke/lazy.nvim):
@@ -377,6 +382,11 @@ directory is writable and how many pets are on screen.
 
 Pets invisible on kitty? Check `:Pets status` — the usual cause is tmux
 without `allow-passthrough`.
+
+Base64 gibberish all over a buffer? Something is writing kitty graphics to a
+terminal that cannot draw them. `backend = 'auto'` detects the nested-Neovim
+case (lazygit's commit editor and friends) and renders ASCII there; `backend =
+'kitty'` forces the escapes out regardless, and `:checkhealth pets` says so.
 
 ## Credits
 
