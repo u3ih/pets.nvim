@@ -86,8 +86,10 @@ M.defaults = {
       close = { action = 'sit' },
     },
   },
-  --- Remember the herd across sessions (state dir, not your config).
-  persist = true,
+  --- Remember the herd across sessions (state dir, not your config). Off by
+  --- default: opening a new Neovim window should never adopt a pet on its
+  --- own, only `:Pets add` should. Turn it on to have the herd waiting.
+  persist = false,
   --- Pets to spawn on setup when nothing was restored. 0 keeps startup silent.
   autostart = 0,
   --- Pause the clock while the terminal is unfocused.

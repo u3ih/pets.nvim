@@ -19,6 +19,8 @@ local M = {}
 --- @type PetsPet[]
 M._pets = {}
 M._initialised = false
+--- Whether the editor autocmds are up; see `M._ensure_events`.
+M._events_ready = false
 
 local NAMES = {
   'Bit',
@@ -153,12 +155,21 @@ function M.setup(opts)
   math.randomseed(os.time() + vim.fn.getpid())
   canvas.setup_highlights()
   scheduler.set_tick(tick)
-  events.setup()
   require('pets.commands').setup()
+
+  -- The editor autocmds come up with the first pet, not with `setup()`: a
+  -- window that never adopts one should cost nothing beyond the `:Pets`
+  -- command. Re-running `setup()` with a herd on screen rebuilds them, since
+  -- they close over the options as they were.
+  if M._events_ready then
+    events.setup()
+  end
 
   M._initialised = true
 
   -- Restore before autostart, so a saved herd is not doubled on every launch.
+  -- Both are opt-in (`persist` is off, `autostart` is 0), so by default
+  -- nothing here adopts anything: pets arrive when you ask for one.
   local restored = 0
   for _, state in ipairs(session.load()) do
     if type(state) == 'table' and type(state.name) == 'string' then
@@ -222,6 +233,15 @@ function M._free_slot(width)
   return math.random(0, max_x)
 end
 
+--- Register the editor autocmds, once, on the first pet.
+function M._ensure_events()
+  if M._events_ready then
+    return
+  end
+  M._events_ready = true
+  events.setup()
+end
+
 --- Adopt a pet.
 --- @param opts { name: string?, species: string?, x: number?, dir: integer?, quiet: boolean? }|nil
 --- @return PetsPet|nil
@@ -261,6 +281,7 @@ function M.add(opts)
   pet.x = math.max(0, math.min(pet.x, math.max(0, width - pet:width())))
 
   table.insert(M._pets, pet)
+  M._ensure_events()
   canvas.show()
   scheduler.start()
   return pet
