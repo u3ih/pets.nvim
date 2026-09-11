@@ -183,21 +183,31 @@ function M.setup()
   end, {
     nargs = '*',
     desc = 'Desktop pets',
-    complete = function(_, cmdline, _)
+    complete = function(lead, cmdline, _)
       local words = vim.split(vim.trim(cmdline), '%s+', { trimempty = true })
-      -- Drop the trailing partial word so completion works mid-typing.
-      if not vim.endswith(cmdline, ' ') then
+      -- The word under the cursor is the lead, not a finished argument.
+      if lead ~= '' then
         table.remove(words, #words)
       end
 
+      local candidates = {}
       if #words <= 1 then
-        return sub_names()
+        candidates = sub_names()
+      else
+        local sub = subcommands[words[2]]
+        -- Only a subcommand's first argument has anything to offer; the
+        -- second one is a free-form pet name.
+        if sub and sub.complete and #words == 2 then
+          candidates = sub.complete()
+        end
       end
-      local sub = subcommands[words[2]]
-      if sub and sub.complete and #words == 2 then
-        return sub.complete()
-      end
-      return {}
+
+      -- A Lua `complete` is handed to Neovim as-is: whatever comes back is
+      -- the menu, so the lead has to be honoured here or every candidate
+      -- matches and the first one wins.
+      return vim.tbl_filter(function(candidate)
+        return vim.startswith(candidate, lead)
+      end, candidates)
     end,
   })
 end
