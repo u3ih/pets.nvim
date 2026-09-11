@@ -48,7 +48,7 @@ and the sprite pack; see |pets-backends|.
 <
 lazy.nvim — NvChad and LazyVim run on it too, so the same spec goes in
 `lua/plugins/pets.lua`: >lua
-    { 'u3ih/pets.nvim', event = 'VeryLazy', opts = {} }
+    { 'u3ih/pets.nvim', cmd = 'Pets', opts = {} }
 <
 mini.deps: >lua
     MiniDeps.add('u3ih/pets.nvim')
@@ -61,9 +61,14 @@ vim-plug, after `plug#end()`: >vim
     Plug 'u3ih/pets.nvim'
     lua require('pets').setup({})
 <
-`setup()` is what restores a saved herd, so load the plugin at startup rather
-than on `:Pets` alone. The PNG art ships with the plugin; there is nothing to
-download.
+Nothing is adopted for you: `setup()` registers |:Pets| and stops there, and
+the editor autocmds only come up with the first pet, so a window you never ask
+for a pet in pays nothing for the plugin — hence `cmd = 'Pets'` above. The PNG
+art ships with the plugin; there is nothing to download.
+
+`persist` is the one option that wants an earlier load: a saved herd is
+restored in `setup()`, so pair it with `event = 'VeryLazy'` or the herd waits
+for your first `:Pets` command.
 
 ==============================================================================
 4. COMMANDS                                                     *pets-commands*
@@ -137,7 +142,7 @@ rubber-duck, slime, snake, zappy — each with several colour styles.
         follow_diagnostics = true,
         ttl = 30,
       },
-      persist = true,
+      persist = false,
       autostart = 0,
       pause_unfocused = true,
       farewell_animation = true,
@@ -165,7 +170,8 @@ canvas.anchor
 
 persist
     Saves the herd to `stdpath('state')/pets.json` on |VimLeavePre| and
-    restores it on the next `setup()`.
+    restores it on the next `setup()`. Off by default: opening a window should
+    not adopt anything by itself.
 
 autostart
     Pets spawned by `setup()` when nothing was restored. Left at 0, adopting a
@@ -194,11 +200,12 @@ aside while a picker, prompt or completion menu is open and come back when it
 closes. `:Pets clear` always removes them immediately, and quitting Neovim
 wipes them from the terminal before the shell comes back.
 
-The herd is remembered across sessions — species, colour and position go to
-`stdpath('state')` on exit. Restoring happens in `setup()`, so a plugin spec
-lazy-loaded on `:Pets` alone will not bring the herd back until the next `:Pets`
-command; load on `VeryLazy` to have them waiting. Set `persist = false` to start
-empty each launch.
+Every window starts empty; a pet arrives when you ask for one. Set
+`persist = true` to be remembered instead — species, colour and position go to
+`stdpath('state')` on exit. Restoring happens in `setup()`, so a spec
+lazy-loaded on `:Pets` alone will not bring the herd back until the next
+`:Pets` command; load on `VeryLazy` to have them waiting. `autostart` is the
+other way in: that many pets on every launch.
 
                                                               *pets-triggers*
 Two hooks make the herd react to the rest of your editor.
