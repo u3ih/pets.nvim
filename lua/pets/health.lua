@@ -31,6 +31,12 @@ function M.check()
   local assets = require('pets.assets')
   if graphics.supported() then
     health.ok(('kitty graphics backend active (backend = %q)'):format(cfg.backend))
+    if graphics.nested() then
+      health.error(
+        'this Neovim is running inside another editor\'s terminal, which cannot draw the images: '
+          .. 'the escapes will be printed as text. Use `backend = \'text\'` or `backend = \'auto\'` here'
+      )
+    end
     if assets.available() then
       health.ok(('%d PNG species available'):format(#assets.species()))
     else
@@ -64,6 +70,11 @@ function M.check()
         )
       end
     end
+  elseif graphics.nested() then
+    health.info(
+      'text backend: this Neovim is inside another editor\'s terminal ($NVIM is set), '
+        .. 'and only the real terminal underneath can draw the sprites'
+    )
   else
     health.info('text backend: this terminal does not advertise the kitty graphics protocol')
   end

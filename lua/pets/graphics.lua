@@ -77,6 +77,24 @@ function M.supported()
   return supported_cache
 end
 
+--- Is Neovim running inside another editor's terminal emulator?
+---
+--- Neovim sets `$NVIM` in every `:terminal` and `jobstart()` child, Vim sets
+--- `$VIM_TERMINAL`, and both are inherited by whatever that child goes on to
+--- run: a Neovim opened as lazygit's commit editor, with lazygit itself in a
+--- terminal buffer, still carries them.
+---
+--- It has to be checked because the kitty variables are inherited too. The
+--- nested Neovim sees `$KITTY_WINDOW_ID`, concludes the terminal speaks the
+--- graphics protocol, and writes a frame of base64 to a terminal emulator that
+--- does not implement it — and an unsupported APC sequence is not dropped, it
+--- is printed, so the payload lands as pages of text across the buffer the
+--- user was trying to type in.
+--- @return boolean
+function M.nested()
+  return vim.env.NVIM ~= nil or vim.env.VIM_TERMINAL ~= nil
+end
+
 --- @return boolean
 function M._detect()
   local cfg = require('pets.config').options
@@ -85,6 +103,11 @@ function M._detect()
   end
   if cfg.backend == 'kitty' then
     return true
+  end
+  -- Only the real terminal at the bottom of the stack can draw the images, and
+  -- inside a terminal buffer we are not talking to it.
+  if M.nested() then
+    return false
   end
   -- A kitty terminal behind a tmux without passthrough is the worst case: the
   -- images are emitted, tmux eats them, and the strip stays empty because the

@@ -62,7 +62,11 @@ subcommands.status = {
     local agents = require('pets.agents')
     table.insert(lines, ('agents: %s (%d terminal(s) tracked)'):format(agents.state, vim.tbl_count(agents.tracked)))
     if not graphics.supported() then
-      table.insert(lines, 'this terminal has no kitty graphics support — pets render as ASCII')
+      if graphics.nested() then
+        table.insert(lines, 'inside another editor\'s terminal — pets render as ASCII')
+      else
+        table.insert(lines, 'this terminal has no kitty graphics support — pets render as ASCII')
+      end
     end
     local legacy = assets.legacy_pack()
     if legacy then
